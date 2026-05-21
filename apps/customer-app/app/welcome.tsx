@@ -1,21 +1,22 @@
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 
 const FEATURES = [
   {
-    icon: "🎩",
+    icon: <MaterialCommunityIcons name="hand-heart-outline" size={24} color={Colors.primary} />,
     title: "White-Glove Service",
     description: "Professional handlers treat every package with care",
   },
   {
-    icon: "⚡",
+    icon: <Ionicons name="flash" size={24} color={Colors.primary} />,
     title: "Express Delivery",
     description: "Same-day and scheduled premium delivery options",
   },
   {
-    icon: "📍",
+    icon: <Ionicons name="location" size={24} color={Colors.primary} />,
     title: "Real-Time Tracking",
     description: "Know exactly where your package is, every step",
   },
@@ -32,7 +33,7 @@ export default function WelcomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.logoIcon}>🎩</Text>
+          <Image source={require("../assets/logo.png")} style={styles.headerLogo} />
           <Text style={styles.logoText}>PORTER</Text>
         </View>
 
@@ -49,7 +50,7 @@ export default function WelcomeScreen() {
           {FEATURES.map((f) => (
             <View key={f.title} style={styles.featureCard}>
               <View style={styles.featureIconWrap}>
-                <Text style={styles.featureIcon}>{f.icon}</Text>
+                {f.icon}
               </View>
               <View style={styles.featureText}>
                 <Text style={styles.featureTitle}>{f.title}</Text>
@@ -66,7 +67,7 @@ export default function WelcomeScreen() {
           onPress={() => router.push("/auth")}
         >
           <Text style={styles.ctaText}>Get Started</Text>
-          <Text style={styles.ctaArrow}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.legal}>
           By continuing, you agree to our{" "}
@@ -93,8 +94,10 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  logoIcon: {
-    fontSize: 20,
+  headerLogo: {
+    width: 28,
+    height: 28,
+    resizeMode: "contain",
   },
   logoText: {
     fontSize: 14,
@@ -105,7 +108,6 @@ const styles = StyleSheet.create({
   hero: {
     marginTop: 24,
     marginBottom: 32,
-    gap: 0,
   },
   heroLine: {
     fontSize: 42,
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
     lineHeight: 52,
   },
   heroAccent: {
-    color: Colors.primary,
+    color: Colors.primaryLight,
   },
   heroSub: {
     fontSize: 16,
@@ -143,9 +145,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
-  },
-  featureIcon: {
-    fontSize: 22,
   },
   featureText: {
     flex: 1,
@@ -181,11 +180,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: Fonts.semibold,
     color: Colors.text,
-  },
-  ctaArrow: {
-    fontSize: 22,
-    color: Colors.text,
-    lineHeight: 24,
   },
   legal: {
     fontSize: 12,

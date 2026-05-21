@@ -8,9 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 
 export default function AuthScreen() {
@@ -30,37 +32,33 @@ export default function AuthScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Text style={styles.backArrow}>←</Text>
+            <Ionicons name="arrow-back" size={20} color={Colors.text} />
           </Pressable>
           <Text style={styles.stepLabel}>Step 1 of 2</Text>
         </View>
 
-        {/* Logo */}
         <View style={styles.logoWrap}>
-          <Text style={styles.logoIcon}>🎩</Text>
+          <Image source={require("../assets/logo.png")} style={styles.logo} />
         </View>
 
-        {/* Heading */}
         <Text style={styles.heading}>Welcome to Porter</Text>
         <Text style={styles.subheading}>Sign in to experience premium delivery</Text>
 
-        {/* Phone input */}
         <View style={styles.section}>
           <Text style={styles.label}>Phone number</Text>
           <View style={styles.phoneRow}>
             <Pressable style={styles.countryPicker}>
-              <Text style={styles.flag}>🇺🇸</Text>
-              <Text style={styles.countryChevron}>▾</Text>
+              <Text style={styles.countryDial}>+1</Text>
+              <Ionicons name="chevron-down" size={13} color={Colors.textSecondary} />
             </Pressable>
             <TextInput
               style={styles.phoneInput}
-              placeholder="+1 (917) 555-6789"
+              placeholder="(917) 555-6789"
               placeholderTextColor={Colors.textTertiary}
               value={phone}
               onChangeText={setPhone}
@@ -70,36 +68,33 @@ export default function AuthScreen() {
           </View>
           <Pressable
             style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
-            onPress={() => {/* TODO: send OTP */}}
+            onPress={() => router.push({ pathname: "/otp", params: { phone: `+1 ${phone}` } })}
           >
             <Text style={styles.primaryBtnText}>Continue with Phone number</Text>
           </Pressable>
         </View>
 
-        {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Social auth */}
         <View style={styles.socials}>
           <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <Text style={styles.socialIcon}>🍎</Text>
+            <FontAwesome name="apple" size={20} color={Colors.text} />
             <Text style={styles.socialText}>Continue with Apple</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <Text style={styles.socialIcon}>G</Text>
+            <FontAwesome name="google" size={18} color="#EA4335" />
             <Text style={styles.socialText}>Continue with Google</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <Text style={styles.socialIcon}>✉</Text>
+            <Ionicons name="mail-outline" size={20} color={Colors.text} />
             <Text style={styles.socialText}>Continue with Email</Text>
           </Pressable>
         </View>
 
-        {/* Legal */}
         <Text style={styles.legal}>
           By continuing, you agree to receive texts from Porter.{"\n"}
           Message and data rates may apply.
@@ -129,10 +124,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backArrow: {
-    fontSize: 18,
-    color: Colors.text,
-  },
   stepLabel: {
     fontSize: 14,
     fontFamily: Fonts.medium,
@@ -142,8 +133,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  logoIcon: {
-    fontSize: 48,
+  logo: {
+    width: 72,
+    height: 72,
+    resizeMode: "contain",
   },
   heading: {
     fontSize: 26,
@@ -172,22 +165,20 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   countryPicker: {
+    width: 80,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     backgroundColor: Colors.card,
     borderRadius: Radius.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
-  flag: {
-    fontSize: 20,
-  },
-  countryChevron: {
-    fontSize: 11,
-    color: Colors.textSecondary,
+  countryDial: {
+    fontSize: 15,
+    fontFamily: Fonts.semibold,
+    color: Colors.text,
   },
   phoneInput: {
     flex: 1,
@@ -242,11 +233,6 @@ const styles = StyleSheet.create({
     height: 56,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
-  },
-  socialIcon: {
-    fontSize: 18,
-    width: 24,
-    textAlign: "center",
   },
   socialText: {
     fontSize: 16,

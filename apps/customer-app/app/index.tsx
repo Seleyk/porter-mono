@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View, Image } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts } from "@/constants/theme";
@@ -28,7 +28,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Text style={styles.logoIcon}>🎩</Text>
+        <Image source={require("../assets/logo.png")} style={styles.logo} />
         <Text style={styles.wordmark}>P O R T E R</Text>
 
         <Animated.View style={[styles.lineWrapper, { opacity: lineAnim }]}>
@@ -57,8 +57,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  logoIcon: {
-    fontSize: 48,
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: "contain",
     marginBottom: 4,
   },
   wordmark: {

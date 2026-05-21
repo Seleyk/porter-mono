@@ -1,15 +1,16 @@
 export const Colors = {
-  background: "#0D0F14",
-  surface: "#141720",
-  card: "#1A1F2E",
-  cardBorder: "#252B3B",
-  primary: "#3B7DD8",
-  primaryLight: "#4A8FEA",
+  background: "#0E0F12",      // Charcoal Black
+  surface: "#0B2A4A",         // Navy Blue – deep surfaces / card overlays
+  card: "#141B2D",             // dark navy card bg
+  cardBorder: "#1E2B45",       // subtle navy border
+  primary: "#123E6B",          // Midnight Blue – CTA buttons
+  primaryLight: "#6FA3C8",     // Steel Blue – accents, active borders, links
+  evergreen: "#4E6F64",        // Evergreen accent
   text: "#FFFFFF",
-  textSecondary: "#8A92A6",
+  textSecondary: "#8A96A3",    // Slate Gray
   textTertiary: "#4A5068",
-  divider: "#1E2336",
-  buttonSecondary: "#1E2336",
+  divider: "#1A2540",
+  buttonSecondary: "#141B2D",
   buttonSecondaryText: "#FFFFFF",
 };
 
