@@ -10,7 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 const RESEND_SECONDS = 30;
 
 export default function OTPScreen() {
@@ -30,9 +30,8 @@ export default function OTPScreen() {
 
   const isComplete = digits.every((d) => d !== "");
 
-  const handleVerify = async () => {
-    if (!isComplete || loading) return;
-    const token = digits.join("");
+  const verify = async (token: string) => {
+    if (loading) return;
     setLoading(true);
     const { error } = await supabase.auth.verifyOtp({ email: email ?? "", token, type: "email" });
     setLoading(false);
@@ -42,6 +41,8 @@ export default function OTPScreen() {
     }
     router.replace("/permissions");
   };
+
+  const handleVerify = () => verify(digits.join(""));
 
   const handleResend = async () => {
     await supabase.auth.signInWithOtp({ email: email ?? "" });
@@ -56,6 +57,9 @@ export default function OTPScreen() {
     if (digit && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
       setFocusedIndex(index + 1);
+    }
+    if (digit && index === OTP_LENGTH - 1 && next.every((d) => d !== "")) {
+      verify(next.join(""));
     }
   };
 

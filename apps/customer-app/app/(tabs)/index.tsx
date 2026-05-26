@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -35,6 +36,11 @@ const MAP_H = 200;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
+  const firstName = profile?.first_name ?? "there";
+  const initials = profile
+    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+    : "?";
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -47,11 +53,11 @@ export default function HomeScreen() {
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.name}>
-              Susan<Text style={styles.namePeriod}>.</Text>
+              {firstName}<Text style={styles.namePeriod}>.</Text>
             </Text>
           </View>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>SP</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
         </View>
 
