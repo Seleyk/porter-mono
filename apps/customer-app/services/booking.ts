@@ -31,6 +31,8 @@ interface CreateBookingParams {
   customerId: string;
   pickup: string;
   dropoff: string;
+  pickupCoords?: { lat: number; lng: number } | null;
+  dropoffCoords?: { lat: number; lng: number } | null;
   itemType: ItemType;
   itemCounts: { large: number; standard: number; small: number };
   specialRequests: string;
@@ -61,11 +63,11 @@ export async function createBooking(params: CreateBookingParams): Promise<Servic
       item_count: Math.max(1, itemCount),
       item_size: toDominantSize(params.itemCounts),
       pickup_address: params.pickup,
-      pickup_latitude: NYC_LAT,
-      pickup_longitude: NYC_LNG,
+      pickup_latitude: params.pickupCoords?.lat ?? NYC_LAT,
+      pickup_longitude: params.pickupCoords?.lng ?? NYC_LNG,
       dropoff_address: params.dropoff,
-      dropoff_latitude: NYC_LAT + 0.01,
-      dropoff_longitude: NYC_LNG + 0.005,
+      dropoff_latitude: params.dropoffCoords?.lat ?? (NYC_LAT + 0.01),
+      dropoff_longitude: params.dropoffCoords?.lng ?? (NYC_LNG + 0.005),
       base_price: basePrice,
       total_price: basePrice,
       special_instructions: metaParts.join(" ") || null,

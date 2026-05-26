@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useState, useEffect } from "react";
+import { StyleSheet, Text, View, Pressable, Alert } from "react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -46,8 +47,61 @@ export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
   const { deliverySpeed, setDeliverySpeed } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const [paymentReady, setPaymentReady] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const selected = DELIVERY_OPTIONS[method];;
+  const selected = DELIVERY_OPTIONS[method];
+
+  useEffect(() => { initializePaymentSheet(); }, [method]);
+
+  async function initializePaymentSheet() {
+    setPaymentReady(false);
+    setPaymentLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: selected.price * 100 }),
+        }
+      );
+      const { clientSecret, error: fnError } = await res.json();
+      if (fnError || !clientSecret) throw new Error(fnError ?? "No clientSecret");
+
+      const { error } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: "Porter",
+        style: "alwaysDark",
+        appearance: {
+          colors: {
+            primary: "#6FA3C8",
+            background: "#050B16",
+            componentBackground: "#0B2A4A",
+            componentText: "#F4F6F8",
+            placeholderText: "rgba(244,246,248,0.4)",
+          },
+        },
+      });
+      if (!error) setPaymentReady(true);
+    } catch (e) {
+      console.error("Payment init failed:", e);
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  async function handleConfirmAndBook() {
+    if (!paymentReady) return;
+    const { error } = await presentPaymentSheet();
+    if (error) {
+      if (error.code !== "Canceled") Alert.alert("Payment failed", error.message);
+      return;
+    }
+    setDeliverySpeed(method);
+    router.push("/finding-porter");
+  }
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -125,16 +179,21 @@ export default function DeliveryMethodScreen() {
         <View style={styles.paymentRow}>
           <View style={styles.paymentLeft}>
             <Ionicons name="card-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.paymentText}>Visa ···· 4291</Text>
+            <Text style={styles.paymentText}>
+              {paymentLoading ? "Loading payment…" : "Pay with card"}
+            </Text>
           </View>
-          <Text style={styles.paymentTotal}>{selected.price}</Text>
+          <Text style={styles.paymentTotal}>${selected.price}</Text>
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
-          onPress={() => { setDeliverySpeed(method); router.push("/finding-porter"); }}
+          style={({ pressed }) => [styles.cta, { opacity: paymentReady ? (pressed ? 0.85 : 1) : 0.5 }]}
+          onPress={handleConfirmAndBook}
+          disabled={!paymentReady || paymentLoading}
         >
-          <Text style={styles.ctaText}>Confirm & Book</Text>
+          <Text style={styles.ctaText}>
+            {paymentLoading ? "Preparing…" : "Confirm & Book"}
+          </Text>
           <Ionicons name="chevron-forward" size={16} color="#fff" />
         </Pressable>
       </View>

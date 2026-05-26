@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { StyleSheet, Text, View, Pressable } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useBookingStore } from "@/store/bookingStore";
 
 export default function ProofOfDeliveryScreen() {
   const insets = useSafeAreaInsets();
+  const { dropoff } = useBookingStore();
   const [captured, setCaptured] = useState(false);
+  const deliveryTime = useRef(new Date());
+
+  const dateStr = deliveryTime.current.toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
+  const timeStr = deliveryTime.current.toLocaleTimeString("en-US", {
+    hour: "numeric", minute: "2-digit",
+  });
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -49,13 +59,13 @@ export default function ProofOfDeliveryScreen() {
             <View style={styles.capturedPhoto}>
               <Ionicons name="checkmark-circle" size={48} color={Colors.steel} />
               <Text style={styles.capturedText}>Photo captured</Text>
-              <Text style={styles.capturedSub}>2:41 PM · 10 W 13th St</Text>
+              <Text style={styles.capturedSub}>{timeStr} · {dropoff || "Drop-off location"}</Text>
             </View>
           )}
           {/* Polaroid caption */}
           <View style={styles.polaroidCaption}>
-            <Text style={styles.polaroidLabel}>Delivery · James R.</Text>
-            <Text style={styles.polaroidDate}>May 25, 2026</Text>
+            <Text style={styles.polaroidLabel}>Delivery · Your Porter</Text>
+            <Text style={styles.polaroidDate}>{dateStr}</Text>
           </View>
         </View>
 

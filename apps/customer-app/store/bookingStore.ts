@@ -3,6 +3,7 @@ import { create } from "zustand";
 export type ItemType = "luggage" | "shopping" | "parcels" | "other";
 export type DropoffMethod = "door" | "box";
 export type DeliverySpeed = "priority" | "standard" | "scheduled";
+export interface LatLng { lat: number; lng: number; }
 
 interface ItemCounts {
   large: number;
@@ -14,6 +15,8 @@ interface BookingState {
   // Step 1 — route
   pickup: string;
   dropoff: string;
+  pickupCoords: LatLng | null;
+  dropoffCoords: LatLng | null;
 
   // Step 2 — item type
   itemType: ItemType | null;
@@ -34,7 +37,7 @@ interface BookingState {
   bookingId: string | null;
 
   // Actions
-  setRoute: (pickup: string, dropoff: string) => void;
+  setRoute: (pickup: string, dropoff: string, pickupCoords?: LatLng | null, dropoffCoords?: LatLng | null) => void;
   setItemType: (type: ItemType) => void;
   setItemCounts: (counts: ItemCounts) => void;
   setSpecialRequests: (text: string) => void;
@@ -50,6 +53,8 @@ const DEFAULT_COUNTS: ItemCounts = { large: 0, standard: 1, small: 0 };
 const initialState = {
   pickup: "",
   dropoff: "",
+  pickupCoords: null as LatLng | null,
+  dropoffCoords: null as LatLng | null,
   itemType: null,
   itemCounts: DEFAULT_COUNTS,
   specialRequests: "",
@@ -63,7 +68,8 @@ const initialState = {
 export const useBookingStore = create<BookingState>((set) => ({
   ...initialState,
 
-  setRoute: (pickup, dropoff) => set({ pickup, dropoff }),
+  setRoute: (pickup, dropoff, pickupCoords = null, dropoffCoords = null) =>
+    set({ pickup, dropoff, pickupCoords, dropoffCoords }),
   setItemType: (itemType) => set({ itemType }),
   setItemCounts: (itemCounts) => set({ itemCounts }),
   setSpecialRequests: (specialRequests) => set({ specialRequests }),

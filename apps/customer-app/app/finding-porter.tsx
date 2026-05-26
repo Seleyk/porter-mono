@@ -56,6 +56,8 @@ export default function FindingPorterScreen() {
         customerId: user.id,
         pickup: store.pickup,
         dropoff: store.dropoff,
+        pickupCoords: store.pickupCoords,
+        dropoffCoords: store.dropoffCoords,
         itemType: store.itemType,
         itemCounts: store.itemCounts,
         specialRequests: store.specialRequests,

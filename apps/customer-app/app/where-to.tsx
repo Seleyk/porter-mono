@@ -1,19 +1,20 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   StyleSheet, Text, View, Pressable, TextInput,
-  ScrollView, KeyboardAvoidingView, Platform,
+  ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-import { useBookingStore } from "@/store/bookingStore";
+import { useBookingStore, type LatLng } from "@/store/bookingStore";
+import { searchPlaces, type MapboxFeature } from "@/services/geocoding";
 
 const FAVORITES = [
   { icon: "home-outline" as const, label: "240 Park Hill Ave", sub: "Home · New York, NY" },
   { icon: "briefcase-outline" as const, label: "10 W 13th St", sub: "Work · New York, NY" },
-  { icon: "star-outline" as const, label: "The Carlyle", sub: "Favorite · 35 E 76th St" },
+  { icon: "star-outline" as const, label: "The Carlyle Hotel", sub: "Favorite · 35 E 76th St" },
 ];
 
 const RECENTS = [
@@ -27,24 +28,77 @@ export default function WhereToScreen() {
   const { pickup, dropoff, setRoute } = useBookingStore();
   const [localPickup, setLocalPickup] = useState(pickup);
   const [localDropoff, setLocalDropoff] = useState(dropoff);
+  const [pickupCoords, setPickupCoords] = useState<LatLng | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<LatLng | null>(null);
+  const [activeField, setActiveField] = useState<"pickup" | "dropoff" | null>(null);
+  const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropoffRef = useRef<TextInput>(null);
 
-  const canContinue = localPickup.trim().length > 0 && localDropoff.trim().length > 0;
+  const canContinue =
+    localPickup.trim().length > 0 && localDropoff.trim().length > 0 &&
+    pickupCoords !== null && dropoffCoords !== null;
 
-  const selectDestination = (label: string) => {
-    if (!localPickup) {
-      setLocalPickup(label);
-      dropoffRef.current?.focus();
+  const handleTextChange = useCallback((text: string, field: "pickup" | "dropoff") => {
+    if (field === "pickup") { setLocalPickup(text); setPickupCoords(null); }
+    else { setLocalDropoff(text); setDropoffCoords(null); }
+    setSuggestions([]);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.trim().length < 2) return;
+
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      const results = await searchPlaces(text);
+      setSuggestions(results);
+      setIsSearching(false);
+    }, 300);
+  }, []);
+
+  const handleSelectSuggestion = (f: MapboxFeature) => {
+    const coords: LatLng = { lat: f.center[1], lng: f.center[0] };
+    const fillPickup = activeField === "pickup" || localPickup.trim().length === 0;
+    if (fillPickup) {
+      setLocalPickup(f.place_name); setPickupCoords(coords);
+      setSuggestions([]); dropoffRef.current?.focus(); setActiveField("dropoff");
     } else {
-      setLocalDropoff(label);
+      setLocalDropoff(f.place_name); setDropoffCoords(coords);
+      setSuggestions([]); setActiveField(null);
     }
   };
 
+  // Tap a static favorite/recent — immediately geocodes and sets coords in one step
+  const handleSelectFavorite = useCallback(async (label: string) => {
+    const targetField: "pickup" | "dropoff" = localPickup.trim().length === 0 ? "pickup" : "dropoff";
+    if (targetField === "pickup") { setLocalPickup(label); setPickupCoords(null); setActiveField("pickup"); }
+    else { setLocalDropoff(label); setDropoffCoords(null); setActiveField("dropoff"); }
+    setSuggestions([]);
+
+    setIsSearching(true);
+    const results = await searchPlaces(label);
+    setIsSearching(false);
+
+    if (results.length > 0) {
+      const f = results[0];
+      const coords: LatLng = { lat: f.center[1], lng: f.center[0] };
+      if (targetField === "pickup") {
+        setLocalPickup(f.place_name); setPickupCoords(coords);
+        dropoffRef.current?.focus(); setActiveField("dropoff");
+      } else {
+        setLocalDropoff(f.place_name); setDropoffCoords(coords);
+        setActiveField(null);
+      }
+    }
+  }, [localPickup]);
+
   const handleConfirm = () => {
     if (!canContinue) return;
-    setRoute(localPickup.trim(), localDropoff.trim());
+    setRoute(localPickup.trim(), localDropoff.trim(), pickupCoords, dropoffCoords);
     router.push("/select-type");
   };
+
+  const showSuggestions = suggestions.length > 0 || isSearching;
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -64,7 +118,6 @@ export default function WhereToScreen() {
 
           {/* Pickup / Dropoff card */}
           <View style={styles.routeCard}>
-            {/* Pickup */}
             <View style={styles.routeRow}>
               <View style={styles.dotWrap}>
                 <View style={styles.dotPickup} />
@@ -74,26 +127,25 @@ export default function WhereToScreen() {
                 placeholder="Pickup location"
                 placeholderTextColor={Colors.textDim}
                 value={localPickup}
-                onChangeText={setLocalPickup}
+                onFocus={() => setActiveField("pickup")}
+                onChangeText={(t) => handleTextChange(t, "pickup")}
                 selectionColor={Colors.steel}
                 returnKeyType="next"
                 onSubmitEditing={() => dropoffRef.current?.focus()}
               />
               {localPickup.length > 0 && (
-                <Pressable onPress={() => setLocalPickup("")} hitSlop={8}>
+                <Pressable onPress={() => { setLocalPickup(""); setPickupCoords(null); setSuggestions([]); }} hitSlop={8}>
                   <Ionicons name="close-circle" size={17} color={Colors.textDim} />
                 </Pressable>
               )}
             </View>
 
-            {/* Connector line */}
             <View style={styles.connectorRow}>
               <View style={styles.connectorDot} />
               <View style={styles.connectorLine} />
               <View style={styles.connectorDot} />
             </View>
 
-            {/* Dropoff */}
             <View style={styles.routeRow}>
               <View style={styles.dotWrap}>
                 <View style={styles.dotDropoff} />
@@ -104,12 +156,13 @@ export default function WhereToScreen() {
                 placeholder="Drop-off location"
                 placeholderTextColor={Colors.textDim}
                 value={localDropoff}
-                onChangeText={setLocalDropoff}
+                onFocus={() => setActiveField("dropoff")}
+                onChangeText={(t) => handleTextChange(t, "dropoff")}
                 selectionColor={Colors.steel}
                 returnKeyType="done"
               />
               {localDropoff.length > 0 && (
-                <Pressable onPress={() => setLocalDropoff("")} hitSlop={8}>
+                <Pressable onPress={() => { setLocalDropoff(""); setDropoffCoords(null); setSuggestions([]); }} hitSlop={8}>
                   <Ionicons name="close-circle" size={17} color={Colors.textDim} />
                 </Pressable>
               )}
@@ -128,51 +181,80 @@ export default function WhereToScreen() {
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-            {/* Favorites */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>FAVORITES</Text>
-              {FAVORITES.map((f) => (
-                <Pressable
-                  key={f.label}
-                  style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-                  onPress={() => selectDestination(f.label)}
-                >
-                  <View style={styles.listIconBox}>
-                    <Ionicons name={f.icon} size={16} color={Colors.steel} />
-                  </View>
-                  <View style={styles.listText}>
-                    <Text style={styles.listTitle}>{f.label}</Text>
-                    <Text style={styles.listSub}>{f.sub}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {showSuggestions ? (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionLabel}>{isSearching ? "SEARCHING…" : "SUGGESTIONS"}</Text>
+                  {isSearching && <ActivityIndicator size="small" color={Colors.steel} />}
+                </View>
+                {suggestions.map((f) => (
+                  <Pressable
+                    key={f.id}
+                    style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => handleSelectSuggestion(f)}
+                  >
+                    <View style={styles.listIconBox}>
+                      <Ionicons name="location-outline" size={16} color={Colors.steel} />
+                    </View>
+                    <View style={styles.listText}>
+                      <Text style={styles.listTitle} numberOfLines={1}>{f.text}</Text>
+                      <Text style={styles.listSub} numberOfLines={1}>{f.place_name}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <>
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>FAVORITES</Text>
+                  {FAVORITES.map((f) => (
+                    <Pressable
+                      key={f.label}
+                      style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+                      onPress={() => handleSelectFavorite(f.label)}
+                    >
+                      <View style={styles.listIconBox}>
+                        <Ionicons name={f.icon} size={16} color={Colors.steel} />
+                      </View>
+                      <View style={styles.listText}>
+                        <Text style={styles.listTitle}>{f.label}</Text>
+                        <Text style={styles.listSub}>{f.sub}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
 
-            {/* Recents */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>RECENT</Text>
-              {RECENTS.map((r) => (
-                <Pressable
-                  key={r.label}
-                  style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-                  onPress={() => selectDestination(r.label)}
-                >
-                  <View style={styles.listIconBox}>
-                    <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
-                  </View>
-                  <View style={styles.listText}>
-                    <Text style={styles.listTitle}>{r.label}</Text>
-                    <Text style={styles.listSub}>{r.sub}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>RECENT</Text>
+                  {RECENTS.map((r) => (
+                    <Pressable
+                      key={r.label}
+                      style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+                      onPress={() => handleSelectFavorite(r.label)}
+                    >
+                      <View style={styles.listIconBox}>
+                        <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
+                      </View>
+                      <View style={styles.listText}>
+                        <Text style={styles.listTitle}>{r.label}</Text>
+                        <Text style={styles.listSub}>{r.sub}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
           </ScrollView>
 
           <Pressable
-            style={({ pressed }) => [styles.cta, { opacity: canContinue ? pressed ? 0.85 : 1 : 0.4 }]}
+            style={({ pressed }) => [styles.cta, { opacity: canContinue ? (pressed ? 0.85 : 1) : 0.4 }]}
             onPress={handleConfirm}
+            disabled={!canContinue}
           >
             <Text style={styles.ctaText}>Confirm Route</Text>
             <Ionicons name="chevron-forward" size={16} color="#fff" />
@@ -290,13 +372,18 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
   sectionLabel: {
     fontSize: 11,
     fontFamily: Fonts.semibold,
     color: Colors.textDim,
     letterSpacing: 2.5,
     textTransform: "uppercase",
-    marginBottom: 12,
   },
   listRow: {
     flexDirection: "row",

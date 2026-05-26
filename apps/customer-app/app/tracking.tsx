@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useBookingStore } from "@/store/bookingStore";
+import { subscribeToBooking } from "@/services/booking";
+import { ServiceRequest } from "@/lib/database.types";
 
 const STAGES = [
   { id: "confirmed", label: "Confirmed", icon: "checkmark-circle-outline" as const },
@@ -14,10 +17,13 @@ const STAGES = [
   { id: "delivered", label: "Delivered", icon: "home-outline" as const },
 ];
 
-const STOPS = [
-  { label: "240 Park Hill Ave", sub: "Pickup · Arrived 2:14 PM", done: true },
-  { label: "10 W 13th St", sub: "Drop-off · ETA 2:41 PM", done: false },
-];
+const STATUS_TO_STAGE: Record<string, number> = {
+  pending:   0,
+  matched:   1,
+  accepted:  2,
+  picked_up: 3,
+  completed: 4,
+};
 
 const PORTERS = [
   { initials: "JR", x: "22%", y: "48%" },
@@ -27,9 +33,45 @@ const PORTERS = [
 
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
-  const [stageIdx, setStageIdx] = useState(1);
+  const { bookingId, pickup, dropoff } = useBookingStore();
+  const [stageIdx, setStageIdx] = useState(0);
+  const completedRef = useRef(false);
+
+  // Auto-advance simulation — local timers, no Supabase writes needed
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStageIdx(1), 4_000),
+      setTimeout(() => setStageIdx(2), 10_000),
+      setTimeout(() => setStageIdx(3), 18_000),
+      setTimeout(() => setStageIdx(4), 28_000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Real-time override — real porter app updates take precedence over simulation
+  useEffect(() => {
+    if (!bookingId) return;
+    const channel = subscribeToBooking(bookingId, (row: ServiceRequest) => {
+      const idx = STATUS_TO_STAGE[row.status];
+      if (idx !== undefined) setStageIdx(idx);
+    });
+    return () => { channel.unsubscribe(); };
+  }, [bookingId]);
 
   const stage = STAGES[stageIdx];
+
+  const stops = [
+    {
+      label: pickup || "Pickup location",
+      sub: stageIdx >= 2 ? "Pickup · Arrived" : "Pickup · En route",
+      done: stageIdx >= 2,
+    },
+    {
+      label: dropoff || "Drop-off location",
+      sub: stageIdx >= 4 ? "Drop-off · Delivered" : "Drop-off · ETA ~27 min",
+      done: stageIdx >= 4,
+    },
+  ];
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -63,7 +105,7 @@ export default function TrackingScreen() {
               </View>
             ))}
             <View style={[styles.activePorter, { left: "49%" as any, top: "38%" as any, transform: [{ translateX: -18 }, { translateY: -18 }] }]}>
-              <Text style={styles.activePorterText}>JR</Text>
+              <Text style={styles.activePorterText}>P</Text>
             </View>
             <View style={[styles.userDot, { left: "49%" as any, top: "62%" as any, transform: [{ translateX: -10 }, { translateY: -10 }] }]} />
           </View>
@@ -91,24 +133,26 @@ export default function TrackingScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.statusLabel}>{stage.label}</Text>
-                <Text style={styles.statusEta}>Estimated arrival in <Text style={styles.statusEtaNum}>27 min</Text></Text>
+                <Text style={styles.statusEta}>
+                  Estimated arrival in{" "}
+                  <Text style={styles.statusEtaNum}>
+                    {stageIdx >= 4 ? "delivered" : `${Math.max(1, 27 - stageIdx * 7)} min`}
+                  </Text>
+                </Text>
               </View>
-              <Pressable onPress={() => setStageIdx(Math.min(STAGES.length - 1, stageIdx + 1))} style={styles.advanceBtn}>
-                <Text style={styles.advanceBtnText}>Next</Text>
-              </Pressable>
             </View>
           </View>
 
           {/* Porter card */}
           <View style={styles.porterCard}>
             <View style={styles.porterAvatar}>
-              <Text style={styles.porterAvatarText}>JR</Text>
+              <Text style={styles.porterAvatarText}>P</Text>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.porterName}>James R.</Text>
+              <Text style={styles.porterName}>Your Porter</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={13} color={Colors.gold} />
-                <Text style={styles.ratingText}>4.98 · 2,341 deliveries</Text>
+                <Text style={styles.ratingText}>4.98 · Identity verified</Text>
               </View>
             </View>
             <View style={styles.porterActions}>
@@ -124,14 +168,14 @@ export default function TrackingScreen() {
           {/* Route stops */}
           <View style={styles.routeCard}>
             <Text style={styles.routeLabel}>ROUTE</Text>
-            {STOPS.map((s, i) => (
-              <View key={s.label} style={styles.stopRow}>
+            {stops.map((s, i) => (
+              <View key={i} style={styles.stopRow}>
                 <View style={styles.stopDotCol}>
                   <View style={[styles.stopDot, s.done && styles.stopDotDone]} />
-                  {i < STOPS.length - 1 && <View style={styles.stopLine} />}
+                  {i < stops.length - 1 && <View style={styles.stopLine} />}
                 </View>
                 <View style={styles.stopBody}>
-                  <Text style={[styles.stopLabel, s.done && styles.stopLabelDone]}>{s.label}</Text>
+                  <Text style={[styles.stopLabel, s.done && styles.stopLabelDone]} numberOfLines={1}>{s.label}</Text>
                   <Text style={styles.stopSub}>{s.sub}</Text>
                 </View>
               </View>
@@ -139,7 +183,6 @@ export default function TrackingScreen() {
           </View>
         </ScrollView>
 
-        {/* Complete CTA (dev shortcut) */}
         {stageIdx === STAGES.length - 1 && (
           <Pressable
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1, marginTop: 12 }]}
@@ -321,19 +364,6 @@ const styles = StyleSheet.create({
   },
   statusEtaNum: {
     fontFamily: Fonts.semibold,
-    color: Colors.steel,
-  },
-  advanceBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "rgba(111,163,200,0.1)",
-    borderRadius: Radius.full,
-    borderWidth: 0.5,
-    borderColor: "rgba(111,163,200,0.2)",
-  },
-  advanceBtnText: {
-    fontSize: 12,
-    fontFamily: Fonts.medium,
     color: Colors.steel,
   },
   porterCard: {

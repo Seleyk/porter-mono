@@ -21,6 +21,7 @@ import {
   CormorantGaramond_700Bold,
 } from "@expo-google-fonts/cormorant-garamond";
 import { Colors } from "@/constants/theme";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -76,8 +77,9 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <AuthProvider>
-      <RouteGuard>
+    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}>
+      <AuthProvider>
+        <RouteGuard>
         <View style={{ flex: 1, backgroundColor: Colors.bgDeep }} onLayout={onLayoutRootView}>
           <StatusBar style="light" />
           <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
@@ -106,7 +108,8 @@ export default function RootLayout() {
             <Stack.Screen name="porter-box-collected" />
           </Stack>
         </View>
-      </RouteGuard>
-    </AuthProvider>
+        </RouteGuard>
+      </AuthProvider>
+    </StripeProvider>
   );
 }
