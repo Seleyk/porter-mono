@@ -1,79 +1,106 @@
-import { StyleSheet, Text, View, Pressable, ScrollView, Image } from "react-native";
+import { useState } from "react";
+import { StyleSheet, Text, View, Pressable, Image } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 
-const FEATURES = [
+const SLIDES = [
   {
-    icon: <MaterialCommunityIcons name="hand-heart-outline" size={24} color={Colors.primary} />,
-    title: "White-Glove Service",
-    description: "Professional handlers treat every package with care",
+    eyebrow: "White-Glove",
+    titlePlain: "Every package,",
+    titleItalic: "a personal arrival.",
+    body: "Trained professionals treat every handoff with the care of a personal concierge.",
   },
   {
-    icon: <Ionicons name="flash" size={24} color={Colors.primary} />,
-    title: "Express Delivery",
-    description: "Same-day and scheduled premium delivery options",
+    eyebrow: "On Your Schedule",
+    titlePlain: "Summon, schedule,",
+    titleItalic: "or send same day.",
+    body: "Priority dispatch in minutes. Standing appointments for everything else.",
   },
   {
-    icon: <Ionicons name="location" size={24} color={Colors.primary} />,
-    title: "Real-Time Tracking",
-    description: "Know exactly where your package is, every step",
+    eyebrow: "Always In View",
+    titlePlain: "Track every step,",
+    titleItalic: "from door to door.",
+    body: "Live location, identity-verified porters, and signature confirmation on arrival.",
   },
 ];
 
-export default function WelcomeScreen() {
+export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const [idx, setIdx] = useState(0);
+
+  const slide = SLIDES[idx];
+
+  const next = () => {
+    if (idx < SLIDES.length - 1) {
+      setIdx(idx + 1);
+    } else {
+      router.push("/auth");
+    }
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Image source={require("../assets/logo.png")} style={styles.headerLogo} />
-          <Text style={styles.logoText}>PORTER</Text>
-        </View>
+    <View style={styles.container}>
+      {/* Full-bleed hero image with overlay */}
+      <Image
+        source={require("../assets/hero.png")}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
+      {/* Dark gradient veil */}
+      <LinearGradient
+        colors={["rgba(5,11,22,0.55)", "rgba(5,11,22,0.7)", "rgba(5,11,22,0.95)", "#050B16"]}
+        locations={[0, 0.35, 0.75, 1]}
+        style={StyleSheet.absoluteFillObject}
+      />
 
-        <View style={styles.hero}>
-          <Text style={styles.heroLine}>Elevate Every</Text>
-          <Text style={[styles.heroLine, styles.heroAccent]}>Delivery</Text>
-          <Text style={styles.heroLine}>Experience</Text>
-          <Text style={styles.heroSub}>
-            Premium delivery service that treats your packages like they deserve.
-          </Text>
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.logoRow}>
+          <Image source={require("../assets/logo.png")} style={styles.logoSmall} />
+          <Text style={styles.wordmark}>PORTER</Text>
         </View>
+        <Pressable onPress={() => router.push("/auth")} style={styles.skipBtn}>
+          <Text style={styles.skipText}>Skip</Text>
+        </Pressable>
+      </View>
 
-        <View style={styles.features}>
-          {FEATURES.map((f) => (
-            <View key={f.title} style={styles.featureCard}>
-              <View style={styles.featureIconWrap}>
-                {f.icon}
-              </View>
-              <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.description}</Text>
-              </View>
-            </View>
+      {/* Slide content */}
+      <View key={idx} style={styles.slideContent}>
+        <Text style={styles.eyebrow}>{slide.eyebrow}</Text>
+        <Text style={styles.heading}>
+          {slide.titlePlain}{"\n"}
+          <Text style={styles.headingItalic}>{slide.titleItalic}</Text>
+        </Text>
+        <Text style={styles.body}>{slide.body}</Text>
+      </View>
+
+      {/* Controls */}
+      <View style={[styles.controls, { paddingBottom: insets.bottom + 24 }]}>
+        {/* Dots + counter */}
+        <View style={styles.dotsRow}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                { width: i === idx ? 28 : 6, backgroundColor: i === idx ? Colors.steel : "rgba(255,255,255,0.2)" },
+              ]}
+            />
           ))}
+          <View style={{ flex: 1 }} />
+          <Text style={styles.counter}>{idx + 1} / {SLIDES.length}</Text>
         </View>
-      </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
           style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
-          onPress={() => router.push("/auth")}
+          onPress={next}
         >
-          <Text style={styles.ctaText}>Get Started</Text>
-          <Ionicons name="chevron-forward" size={18} color={Colors.text} />
+          <Text style={styles.ctaText}>{idx < SLIDES.length - 1 ? "Continue" : "Get Started"}</Text>
+          <Ionicons name="chevron-forward" size={16} color="#fff" />
         </Pressable>
-        <Text style={styles.legal}>
-          By continuing, you agree to our{" "}
-          <Text style={styles.legalLink}>Terms</Text> and{" "}
-          <Text style={styles.legalLink}>Privacy Policy</Text>
-        </Text>
       </View>
     </View>
   );
@@ -82,113 +109,108 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.bgDeep,
   },
-  scroll: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  header: {
+  topBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 16,
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
   },
-  headerLogo: {
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  logoSmall: {
     width: 28,
     height: 28,
     resizeMode: "contain",
   },
-  logoText: {
-    fontSize: 14,
-    fontFamily: Fonts.bold,
-    color: Colors.text,
-    letterSpacing: 4,
-  },
-  hero: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  heroLine: {
-    fontSize: 42,
-    fontFamily: Fonts.bold,
-    color: Colors.text,
-    lineHeight: 52,
-  },
-  heroAccent: {
-    color: Colors.primaryLight,
-  },
-  heroSub: {
-    fontSize: 16,
-    fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
-    lineHeight: 24,
-    marginTop: 16,
-  },
-  features: {
-    gap: 12,
-  },
-  featureCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    padding: 16,
-    gap: 16,
-  },
-  featureIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featureText: {
-    flex: 1,
-    gap: 4,
-  },
-  featureTitle: {
-    fontSize: 16,
+  wordmark: {
+    fontSize: 12,
     fontFamily: Fonts.semibold,
     color: Colors.text,
+    letterSpacing: 5,
   },
-  featureDesc: {
+  skipBtn: {
+    padding: 8,
+  },
+  skipText: {
     fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
-    lineHeight: 20,
+    fontFamily: Fonts.medium,
+    color: Colors.textMuted,
   },
-  footer: {
+  slideContent: {
+    flex: 1,
+    justifyContent: "flex-end",
+    paddingHorizontal: 28,
+    paddingBottom: 16,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: Fonts.medium,
+    color: Colors.steel,
+    letterSpacing: 4,
+    textTransform: "uppercase",
+    marginBottom: 18,
+  },
+  heading: {
+    fontSize: 38,
+    fontFamily: Fonts.light,
+    color: "#fff",
+    lineHeight: 42,
+    letterSpacing: -0.5,
+    marginBottom: 0,
+  },
+  headingItalic: {
+    fontFamily: Fonts.serifItalic,
+    fontSize: 38,
+    color: Colors.steel,
+    lineHeight: 48,
+  },
+  body: {
+    marginTop: 18,
+    fontSize: 15,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    lineHeight: 24,
+    maxWidth: 340,
+  },
+  controls: {
     paddingHorizontal: 24,
-    paddingTop: 12,
-    gap: 12,
-    backgroundColor: Colors.background,
+    gap: 22,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 999,
+  },
+  counter: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: Colors.textDim,
+    letterSpacing: 1,
   },
   cta: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    height: 56,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.midnight,
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.4)",
   },
   ctaText: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: Fonts.semibold,
-    color: Colors.text,
-  },
-  legal: {
-    fontSize: 12,
-    fontFamily: Fonts.regular,
-    color: Colors.textTertiary,
-    textAlign: "center",
-  },
-  legalLink: {
-    textDecorationLine: "underline",
-    color: Colors.textSecondary,
+    color: "#fff",
+    letterSpacing: 0.3,
   },
 });

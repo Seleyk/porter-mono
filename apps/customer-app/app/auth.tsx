@@ -1,106 +1,125 @@
 import { useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  View,
-  Pressable,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
+  StyleSheet, Text, View, Pressable, TextInput,
+  KeyboardAvoidingView, Platform, ScrollView, Image, Alert,
 } from "react-native";
 import { router } from "expo-router";
+import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { supabase } from "@/lib/supabase";
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const isEmailReady = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const handleContinue = async () => {
+    if (!isEmailReady || loading) return;
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: Linking.createURL("/") },
+    });
+    setLoading(false);
+    if (error) {
+      Alert.alert("Couldn't send code", error.message);
+      return;
+    }
+    router.push({ pathname: "/otp", params: { email: email.trim() } });
+  };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: Colors.background }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.topBar}>
-          <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={20} color={Colors.text} />
-          </Pressable>
-          <Text style={styles.stepLabel}>Step 1 of 2</Text>
-        </View>
-
-        <View style={styles.logoWrap}>
-          <Image source={require("../assets/logo.png")} style={styles.logo} />
-        </View>
-
-        <Text style={styles.heading}>Welcome to Porter</Text>
-        <Text style={styles.subheading}>Sign in to experience premium delivery</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.label}>Phone number</Text>
-          <View style={styles.phoneRow}>
-            <Pressable style={styles.countryPicker}>
-              <Text style={styles.countryDial}>+1</Text>
-              <Ionicons name="chevron-down" size={13} color={Colors.textSecondary} />
+    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top bar */}
+          <View style={styles.topBar}>
+            <Pressable
+              style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="chevron-back" size={18} color={Colors.text} />
             </Pressable>
-            <TextInput
-              style={styles.phoneInput}
-              placeholder="(917) 555-6789"
-              placeholderTextColor={Colors.textTertiary}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              selectionColor={Colors.primary}
-            />
+            <Text style={styles.stepLabel}>Step 1 / 2</Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
-            onPress={() => router.push({ pathname: "/otp", params: { phone: `+1 ${phone}` } })}
-          >
-            <Text style={styles.primaryBtnText}>Continue with Phone number</Text>
-          </Pressable>
-        </View>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
+          {/* Logo + heading */}
+          <View style={styles.logoWrap}>
+            <Image source={require("../assets/logo.png")} style={styles.logo} />
+          </View>
+          <View style={styles.headingWrap}>
+            <Text style={styles.eyebrow}>Welcome</Text>
+            <Text style={styles.heading}>
+              {"Good evening.\n"}
+              <Text style={styles.headingItalic}>Shall we begin?</Text>
+            </Text>
+            <Text style={styles.sub}>Sign in to summon your private porter.</Text>
+          </View>
 
-        <View style={styles.socials}>
-          <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <FontAwesome name="apple" size={20} color={Colors.text} />
-            <Text style={styles.socialText}>Continue with Apple</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <FontAwesome name="google" size={18} color="#EA4335" />
-            <Text style={styles.socialText}>Continue with Google</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-            <Ionicons name="mail-outline" size={20} color={Colors.text} />
-            <Text style={styles.socialText}>Continue with Email</Text>
-          </Pressable>
-        </View>
+          {/* Email input */}
+          <View style={styles.form}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={styles.emailInput}
+              placeholder="you@example.com"
+              placeholderTextColor={Colors.textDim}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              selectionColor={Colors.steel}
+            />
 
-        <Text style={styles.legal}>
-          By continuing, you agree to receive texts from Porter.{"\n"}
-          Message and data rates may apply.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, { opacity: !isEmailReady || loading ? 0.45 : pressed ? 0.85 : 1 }]}
+              onPress={handleContinue}
+            >
+              <Text style={styles.primaryBtnText}>Continue</Text>
+              <Ionicons name="chevron-forward" size={16} color="#fff" />
+            </Pressable>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social buttons */}
+          <View style={styles.socials}>
+            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
+              <FontAwesome name="apple" size={19} color={Colors.text} />
+              <Text style={styles.socialText}>Continue with Apple</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
+              <FontAwesome name="google" size={17} color="#EA4335" />
+              <Text style={styles.socialText}>Continue with Google</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
+              <Ionicons name="mail-outline" size={19} color={Colors.text} />
+              <Text style={styles.socialText}>Continue with Email</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.legal}>
+            By continuing, you agree to our{" "}
+            <Text style={styles.legalLink}>Terms</Text> and{" "}
+            <Text style={styles.legalLink}>Privacy Policy</Text>.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
@@ -108,117 +127,127 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    backgroundColor: Colors.background,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 32,
+    marginBottom: 36,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: Radius.full,
-    backgroundColor: Colors.card,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   stepLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: Fonts.medium,
-    color: Colors.textSecondary,
+    color: Colors.textDim,
+    letterSpacing: 2.5,
+    textTransform: "uppercase",
   },
   logoWrap: {
     alignItems: "center",
     marginBottom: 24,
   },
   logo: {
-    width: 72,
-    height: 72,
+    width: 48,
+    height: 48,
     resizeMode: "contain",
   },
+  headingWrap: {
+    alignItems: "center",
+    marginBottom: 36,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: Fonts.medium,
+    color: Colors.steel,
+    letterSpacing: 4,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
   heading: {
-    fontSize: 26,
-    fontFamily: Fonts.bold,
-    color: Colors.text,
+    fontSize: 38,
+    fontFamily: Fonts.serif,
+    color: "#fff",
     textAlign: "center",
-    marginBottom: 8,
+    lineHeight: 44,
+    letterSpacing: -0.3,
+    marginBottom: 14,
   },
-  subheading: {
-    fontSize: 15,
+  headingItalic: {
+    fontFamily: Fonts.serifItalic,
+    color: Colors.steel,
+  },
+  sub: {
+    fontSize: 14,
     fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     textAlign: "center",
-    marginBottom: 32,
+    lineHeight: 21,
   },
-  section: {
+  form: {
     gap: 12,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: Fonts.medium,
-    color: Colors.text,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
-  phoneRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  countryPicker: {
-    width: 80,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: Colors.card,
+  emailInput: {
+    height: 56,
+    backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  countryDial: {
-    fontSize: 15,
-    fontFamily: Fonts.semibold,
-    color: Colors.text,
-  },
-  phoneInput: {
-    flex: 1,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.1)",
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: Fonts.regular,
     color: Colors.text,
   },
   primaryBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.xl,
-    height: 56,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    height: 56,
+    backgroundColor: Colors.midnight,
+    borderRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.4)",
+    marginTop: 4,
   },
   primaryBtnText: {
     fontSize: 16,
     fontFamily: Fonts.semibold,
-    color: Colors.text,
+    color: "#fff",
+    letterSpacing: 0.3,
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginVertical: 24,
+    gap: 14,
+    marginVertical: 28,
   },
   dividerLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: Colors.divider,
+    height: 0.5,
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   dividerText: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: Fonts.regular,
-    color: Colors.textSecondary,
+    color: Colors.textDim,
+    letterSpacing: 2.5,
+    textTransform: "uppercase",
   },
   socials: {
     gap: 10,
@@ -228,23 +257,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    backgroundColor: Colors.buttonSecondary,
-    borderRadius: Radius.xl,
-    height: 56,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    height: 52,
+    borderRadius: Radius.lg,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.14)",
   },
   socialText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: Fonts.medium,
     color: Colors.text,
   },
   legal: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: Fonts.regular,
-    color: Colors.textTertiary,
+    color: Colors.textDim,
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 17,
     marginTop: 28,
+  },
+  legalLink: {
+    color: Colors.steel,
   },
 });
