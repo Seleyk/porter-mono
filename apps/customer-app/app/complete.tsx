@@ -6,6 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useAuth } from "@/context/AuthContext";
+import { addTip, getBooking } from "@/services/booking";
+import { supabase } from "@/lib/supabase";
 
 const SERVICE_FEE = 3.5;
 
@@ -18,13 +21,37 @@ const TIPS = [
 
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
-  const { deliverySpeed, reset } = useBookingStore();
+  const { deliverySpeed, bookingId, reset } = useBookingStore();
+  const { user, profile } = useAuth();
   const speedLabel = deliverySpeed === "priority" ? "Priority Delivery" : deliverySpeed === "standard" ? "Standard Delivery" : "Scheduled Delivery";
   const speedPrice = deliverySpeed === "priority" ? 28 : deliverySpeed === "standard" ? 18 : 16;
   const [rating, setRating] = useState(0);
   const [tip, setTip] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const total = speedPrice + SERVICE_FEE + (tip ?? 0);
+  const firstName = profile?.first_name ?? "there";
+
+  const handleDone = async () => {
+    setSaving(true);
+    if (bookingId) {
+      if (tip && tip > 0) await addTip(bookingId, tip).catch(console.error);
+      if (rating > 0 && user) {
+        const booking = await getBooking(bookingId);
+        if (booking?.porter_id) {
+          const { error } = await supabase.from("ratings").insert({
+            request_id: bookingId,
+            rater_id: user.id,
+            rated_id: booking.porter_id,
+            rating,
+          });
+          if (error) console.error(error);
+        }
+      }
+    }
+    reset();
+    router.replace("/(tabs)");
+  };
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -42,14 +69,14 @@ export default function CompleteScreen() {
             <Text style={styles.eyebrow}>Delivered</Text>
             <Text style={styles.heading}>
               Thank you,{"\n"}
-              <Text style={styles.headingItalic}>Susan.</Text>
+              <Text style={styles.headingItalic}>{firstName}.</Text>
             </Text>
-            <Text style={styles.sub}>James delivered your items to 10 W 13th St at 2:41 PM.</Text>
+            <Text style={styles.sub}>Your items have been delivered successfully.</Text>
           </View>
 
           {/* Star rating */}
           <View style={styles.ratingCard}>
-            <Text style={styles.ratingTitle}>How was James?</Text>
+            <Text style={styles.ratingTitle}>How was your porter?</Text>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <Pressable key={s} onPress={() => setRating(s)} hitSlop={8}>
@@ -106,9 +133,10 @@ export default function CompleteScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1, marginTop: 12 }]}
-          onPress={() => { reset(); router.replace("/(tabs)"); }}
+          onPress={handleDone}
+          disabled={saving}
         >
-          <Text style={styles.ctaText}>Done</Text>
+          <Text style={styles.ctaText}>{saving ? "Saving…" : "Done"}</Text>
         </Pressable>
       </View>
     </LinearGradient>

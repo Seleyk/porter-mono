@@ -62,7 +62,9 @@ export default function FindingPorterScreen() {
         dropoffMethod: store.dropoffMethod,
         selectedBoxName: store.selectedBoxName,
         deliverySpeed: store.deliverySpeed,
-      }).catch(console.error);
+      })
+        .then((booking) => store.setBookingId(booking.id))
+        .catch(console.error);
       const t = setTimeout(() => router.replace("/tracking"), 600);
       return () => clearTimeout(t);
     }

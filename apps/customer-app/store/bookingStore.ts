@@ -30,6 +30,9 @@ interface BookingState {
   // Step 5 — delivery speed
   deliverySpeed: DeliverySpeed;
 
+  // Created booking
+  bookingId: string | null;
+
   // Actions
   setRoute: (pickup: string, dropoff: string) => void;
   setItemType: (type: ItemType) => void;
@@ -38,6 +41,7 @@ interface BookingState {
   setDropoffMethod: (method: DropoffMethod) => void;
   setSelectedBox: (id: string, name: string) => void;
   setDeliverySpeed: (speed: DeliverySpeed) => void;
+  setBookingId: (id: string) => void;
   reset: () => void;
 }
 
@@ -53,6 +57,7 @@ const initialState = {
   selectedBoxId: null,
   selectedBoxName: null,
   deliverySpeed: "priority" as DeliverySpeed,
+  bookingId: null,
 };
 
 export const useBookingStore = create<BookingState>((set) => ({
@@ -67,6 +72,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setSelectedBox: (selectedBoxId, selectedBoxName) =>
     set({ selectedBoxId, selectedBoxName }),
   setDeliverySpeed: (deliverySpeed) => set({ deliverySpeed }),
+  setBookingId: (bookingId) => set({ bookingId }),
   reset: () => set(initialState),
 }));
 

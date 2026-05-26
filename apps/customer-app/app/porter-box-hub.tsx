@@ -1,16 +1,13 @@
-import { useState } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { useState, useEffect } from "react";
+import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-
-const LOCATIONS = [
-  { id: "madison", name: "Porter Box · Madison", dist: "0.2 mi", address: "150 E 42nd St", slots: 4 },
-  { id: "lexington", name: "Porter Box · Lexington", dist: "0.5 mi", address: "580 Lexington Ave", slots: 7 },
-  { id: "fifth", name: "Porter Box · Fifth Ave", dist: "0.8 mi", address: "611 Fifth Ave", slots: 2 },
-];
+import { supabase } from "@/lib/supabase";
+import { PorterHub } from "@/lib/database.types";
+import { useBookingStore } from "@/store/bookingStore";
 
 const HOW_TO = [
   { step: "1", text: "Select a nearby Porter Box location." },
@@ -21,7 +18,24 @@ const HOW_TO = [
 
 export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
+  const store = useBookingStore();
   const [tab, setTab] = useState<"pickup" | "dropoff">("pickup");
+  const [hubs, setHubs] = useState<PorterHub[]>([]);
+  const [hubsLoading, setHubsLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("porter_hubs")
+      .select("*")
+      .eq("is_active", true)
+      .then(({ data }) => setHubs(data ?? []))
+      .finally(() => setHubsLoading(false));
+  }, []);
+
+  const handleSelectHub = (hub: PorterHub) => {
+    store.setSelectedBox(hub.id, hub.name);
+    router.push("/where-to");
+  };
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -91,28 +105,35 @@ export default function PorterBoxHubScreen() {
           ) : (
             <>
               <Text style={styles.eyebrow}>Nearby Locations</Text>
-              {LOCATIONS.map((loc) => (
-                <Pressable
-                  key={loc.id}
-                  style={({ pressed }) => [styles.locationCard, { opacity: pressed ? 0.85 : 1 }]}
-                  onPress={() => router.push("/where-to")}
-                >
-                  <View style={styles.locationIconWrap}>
-                    <Ionicons name="cube-outline" size={22} color={Colors.gold} />
-                  </View>
-                  <View style={styles.locationBody}>
-                    <Text style={styles.locationName}>{loc.name}</Text>
-                    <Text style={styles.locationAddr}>{loc.address}</Text>
-                    <View style={styles.locationMeta}>
-                      <Ionicons name="location-outline" size={12} color={Colors.textDim} />
-                      <Text style={styles.locationMetaText}>{loc.dist}</Text>
-                      <Text style={styles.locationMetaDot}>·</Text>
-                      <Text style={styles.locationMetaText}>{loc.slots} slots open</Text>
+              {hubsLoading ? (
+                <ActivityIndicator color={Colors.steel} style={{ marginTop: 20 }} />
+              ) : hubs.length === 0 ? (
+                <View style={styles.emptyHubs}>
+                  <Ionicons name="cube-outline" size={28} color={Colors.textDim} />
+                  <Text style={styles.emptyHubsText}>No porter boxes available in your area yet.</Text>
+                </View>
+              ) : (
+                hubs.map((hub) => (
+                  <Pressable
+                    key={hub.id}
+                    style={({ pressed }) => [styles.locationCard, { opacity: pressed ? 0.85 : 1 }]}
+                    onPress={() => handleSelectHub(hub)}
+                  >
+                    <View style={styles.locationIconWrap}>
+                      <Ionicons name="cube-outline" size={22} color={Colors.gold} />
                     </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
-                </Pressable>
-              ))}
+                    <View style={styles.locationBody}>
+                      <Text style={styles.locationName}>{hub.name}</Text>
+                      <Text style={styles.locationAddr}>{hub.address}</Text>
+                      <View style={styles.locationMeta}>
+                        <Ionicons name="cube-outline" size={12} color={Colors.textDim} />
+                        <Text style={styles.locationMetaText}>{hub.capacity} slots</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+                  </Pressable>
+                ))
+              )}
             </>
           )}
         </ScrollView>
@@ -336,5 +357,17 @@ const styles = StyleSheet.create({
   locationMetaDot: {
     fontSize: 11,
     color: Colors.textDim,
+  },
+  emptyHubs: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 32,
+  },
+  emptyHubsText: {
+    fontSize: 13,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
