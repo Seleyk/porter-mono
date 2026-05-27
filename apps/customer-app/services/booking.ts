@@ -123,8 +123,8 @@ export function subscribeToBooking(
   bookingId: string,
   onUpdate: (row: ServiceRequest) => void,
 ) {
-  return supabase
-    .channel(`booking:${bookingId}`)
+  const channel = supabase
+    .channel(`booking:${bookingId}:${Date.now()}`)
     .on(
       "postgres_changes",
       {
@@ -136,4 +136,5 @@ export function subscribeToBooking(
       (payload) => onUpdate(payload.new as ServiceRequest),
     )
     .subscribe();
+  return { unsubscribe: () => supabase.removeChannel(channel) };
 }

@@ -77,7 +77,10 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}>
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.porter.customer"
+    >
       <AuthProvider>
         <RouteGuard>
         <View style={{ flex: 1, backgroundColor: Colors.bgDeep }} onLayout={onLayoutRootView}>

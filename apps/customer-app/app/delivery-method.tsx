@@ -73,14 +73,16 @@ export default function DeliveryMethodScreen() {
       const { error } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: "Porter",
+        returnURL: "porter://stripe-redirect",
         style: "alwaysDark",
+        applePay: { merchantCountryCode: "US" },
         appearance: {
           colors: {
             primary: "#6FA3C8",
             background: "#050B16",
             componentBackground: "#0B2A4A",
             componentText: "#F4F6F8",
-            placeholderText: "rgba(244,246,248,0.4)",
+            placeholderText: "#F4F6F866",
           },
         },
       });
