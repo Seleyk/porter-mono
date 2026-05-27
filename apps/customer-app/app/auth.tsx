@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   StyleSheet, Text, View, Pressable, TextInput,
   KeyboardAvoidingView, Platform, ScrollView, Image, Alert,
@@ -8,6 +8,7 @@ import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 
@@ -17,6 +18,33 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
 
   const isEmailReady = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      // Add to .env: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID and EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      scopes: ["profile", "email"],
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.signIn();
+      const { idToken } = await GoogleSignin.getTokens();
+      if (!idToken) throw new Error("No ID token returned");
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      if (e.code === statusCodes.SIGN_IN_CANCELLED) return;
+      if (e.code === statusCodes.IN_PROGRESS) return;
+      Alert.alert("Google sign-in failed", e.message);
+    }
+  };
 
   const handleContinue = async () => {
     if (!isEmailReady || loading) return;
@@ -98,11 +126,7 @@ export default function AuthScreen() {
 
           {/* Social buttons */}
           <View style={styles.socials}>
-            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
-              <FontAwesome name="apple" size={19} color={Colors.text} />
-              <Text style={styles.socialText}>Continue with Apple</Text>
-            </Pressable>
-            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]}>
+            <Pressable style={({ pressed }) => [styles.socialBtn, { opacity: pressed ? 0.8 : 1 }]} onPress={handleGoogleSignIn}>
               <FontAwesome name="google" size={17} color="#EA4335" />
               <Text style={styles.socialText}>Continue with Google</Text>
             </Pressable>

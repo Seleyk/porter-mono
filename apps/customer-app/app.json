@@ -31,11 +31,17 @@
       "expo-router",
       "expo-font",
       "expo-splash-screen",
-      ["@stripe/stripe-react-native", {
-        "merchantIdentifier": "merchant.com.porter.customer",
-        "enableGooglePay": false
-      }],
-      "@rnmapbox/maps"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.porter.customer",
+          "enableGooglePay": false
+        }
+      ],
+      "@rnmapbox/maps",
+      ["@react-native-google-signin/google-signin", {
+        "iosUrlScheme": "com.googleusercontent.apps.166537216294-m3nem8fttfkuj0k62fja5j8bkgmacbbk"
+      }]
     ],
     "scheme": "porter"
   }
