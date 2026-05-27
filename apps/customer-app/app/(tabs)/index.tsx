@@ -1,5 +1,5 @@
-import { useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView, Animated } from "react-native";
+import { useRef, useEffect, useState } from "react";
+import { StyleSheet, Text, View, Pressable, ScrollView, Animated, Modal } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -46,6 +46,7 @@ export default function HomeScreen() {
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
     : "?";
 
+  const [mapExpanded, setMapExpanded] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -185,13 +186,58 @@ export default function HomeScreen() {
               <View style={styles.nearbyDot} />
               <Text style={styles.nearbyText}>5 porters nearby</Text>
             </View>
-            <Pressable style={({ pressed }) => [styles.expandBtn, { opacity: pressed ? 0.7 : 1 }]}>
+            <Pressable
+              style={({ pressed }) => [styles.expandBtn, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => setMapExpanded(true)}
+            >
               <Text style={styles.expandText}>Expand</Text>
               <Ionicons name="chevron-forward" size={13} color={Colors.text} />
             </Pressable>
           </View>
         </View>
       </ScrollView>
+
+      {/* Full-screen Active Porters modal */}
+      <Modal visible={mapExpanded} animationType="slide" statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: Colors.background }}>
+          <MapboxGL.MapView
+            style={{ flex: 1 }}
+            styleURL="mapbox://styles/mapbox/dark-v11"
+            logoEnabled={false}
+            attributionEnabled={false}
+          >
+            <MapboxGL.Camera
+              zoomLevel={14.5}
+              centerCoordinate={NYC_CENTER}
+              animationDuration={0}
+            />
+            <MapboxGL.MarkerView coordinate={NYC_CENTER}>
+              <View style={styles.userDot} />
+            </MapboxGL.MarkerView>
+            {FAKE_DRIVERS.map((d) => (
+              <MapboxGL.MarkerView key={d.id} coordinate={d.coords}>
+                <View style={styles.driverMarkerWrap}>
+                  <Animated.View
+                    style={[styles.driverPulse, {
+                      opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+                      transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
+                    }]}
+                  />
+                  <View style={styles.driverBadge}>
+                    <Text style={styles.driverInitials}>{d.id}</Text>
+                  </View>
+                </View>
+              </MapboxGL.MarkerView>
+            ))}
+          </MapboxGL.MapView>
+          <Pressable
+            style={({ pressed }) => [styles.mapCloseBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => setMapExpanded(false)}
+          >
+            <Ionicons name="close" size={20} color={Colors.text} />
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -413,5 +459,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Fonts.medium,
     color: Colors.text,
+  },
+  mapCloseBtn: {
+    position: "absolute",
+    top: 56,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(14,15,18,0.85)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

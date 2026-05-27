@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, Alert } from "react-native";
+import { StyleSheet, Text, View, Pressable, Alert, Modal } from "react-native";
 import { useStripe } from "@stripe/stripe-react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useBookingStore, DELIVERY_OPTIONS, type DeliverySpeed } from "@/store/bookingStore";
+import { fetchRoute } from "@/services/directions";
 
 const METHODS = [
   {
@@ -35,23 +37,45 @@ const METHODS = [
   },
 ];
 
-const PORTERS = [
-  { initials: "JR", x: "22%", y: "48%" },
-  { initials: "MA", x: "65%", y: "22%" },
-  { initials: "EH", x: "12%", y: "64%" },
-  { initials: "TK", x: "43%", y: "70%" },
-  { initials: "LO", x: "75%", y: "58%" },
+const PORTER_OFFSETS = [
+  { id: "JR", dlng: -0.006, dlat:  0.003 },
+  { id: "MA", dlng:  0.008, dlat:  0.006 },
+  { id: "EH", dlng: -0.009, dlat: -0.002 },
+  { id: "TK", dlng:  0.001, dlat: -0.005 },
+  { id: "LO", dlng:  0.010, dlat:  0.001 },
 ];
 
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
-  const { deliverySpeed, setDeliverySpeed } = useBookingStore();
+  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const [mapExpanded, setMapExpanded] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   const selected = DELIVERY_OPTIONS[method];
+
+  const pickupLng  = pickupCoords?.lng  ?? -73.9967;
+  const pickupLat  = pickupCoords?.lat  ?? 40.7484;
+  const dropoffLng = dropoffCoords?.lng ?? -73.9950;
+  const dropoffLat = dropoffCoords?.lat ?? 40.7467;
+  const pickupCoord:  [number, number] = [pickupLng,  pickupLat];
+  const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
+
+  const porterCoords = PORTER_OFFSETS.map((p) => ({
+    id:    p.id,
+    coord: [pickupLng + p.dlng, pickupLat + p.dlat] as [number, number],
+  }));
+
+  const camNE: [number, number] = [Math.max(pickupLng, dropoffLng) + 0.015, Math.max(pickupLat, dropoffLat) + 0.015];
+  const camSW: [number, number] = [Math.min(pickupLng, dropoffLng) - 0.015, Math.min(pickupLat, dropoffLat) - 0.015];
+
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
+
+  useEffect(() => {
+    fetchRoute(pickupCoord, dropoffCoord).then(setRouteCoords);
+  }, []);
 
   useEffect(() => { initializePaymentSheet(); }, [method]);
 
@@ -105,6 +129,37 @@ export default function DeliveryMethodScreen() {
     router.push("/finding-porter");
   }
 
+  const mapMarkers = (
+    <>
+      <MapboxGL.ShapeSource
+        id="dmRoute"
+        shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+      >
+        <MapboxGL.LineLayer
+          id="dmRouteLine"
+          style={{ lineColor: "rgba(111,163,200,0.5)", lineWidth: 2, lineDasharray: [2, 2] }}
+        />
+      </MapboxGL.ShapeSource>
+      <MapboxGL.MarkerView coordinate={pickupCoord}>
+        <View style={styles.pickupMarker}>
+          <Ionicons name="location" size={14} color={Colors.gold} />
+        </View>
+      </MapboxGL.MarkerView>
+      <MapboxGL.MarkerView coordinate={dropoffCoord}>
+        <View style={styles.dropoffMarker}>
+          <Ionicons name="flag" size={12} color={Colors.steel} />
+        </View>
+      </MapboxGL.MarkerView>
+      {porterCoords.map((p) => (
+        <MapboxGL.MarkerView key={p.id} coordinate={p.coord}>
+          <View style={styles.porterBadgeView}>
+            <Text style={styles.porterBadgeText}>{p.id}</Text>
+          </View>
+        </MapboxGL.MarkerView>
+      ))}
+    </>
+  );
+
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
@@ -119,28 +174,36 @@ export default function DeliveryMethodScreen() {
           <Text style={styles.stepLabel}>4 of 4</Text>
         </View>
 
-        {/* Mini map */}
-        <View style={styles.mapCard}>
-          {[25, 50, 75].map((p) => (
-            <View key={`h${p}`} style={[styles.gridLine, { top: `${p}%` as any, left: 0, right: 0, height: 1 }]} />
-          ))}
-          {[20, 40, 60, 80].map((p) => (
-            <View key={`v${p}`} style={[styles.gridLine, { left: `${p}%` as any, top: 0, bottom: 0, width: 1 }]} />
-          ))}
-          {PORTERS.map((p) => (
-            <View
-              key={p.initials}
-              style={[styles.porterBadge, { left: p.x as any, top: p.y as any, transform: [{ translateX: -14 }, { translateY: -14 }] }]}
+        {/* Mini map — real route + active porters */}
+        <Pressable onPress={() => setMapExpanded(true)}>
+          <View style={styles.mapCard}>
+            <MapboxGL.MapView
+              style={{ flex: 1 }}
+              styleURL="mapbox://styles/mapbox/dark-v11"
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled={false}
             >
-              <Text style={styles.porterInitials}>{p.initials}</Text>
+              <MapboxGL.Camera
+                bounds={{ ne: camNE, sw: camSW, paddingLeft: 40, paddingRight: 40, paddingTop: 30, paddingBottom: 30 }}
+                animationDuration={0}
+              />
+              {mapMarkers}
+            </MapboxGL.MapView>
+            <View style={styles.mapPill}>
+              <View style={styles.mapPillDot} />
+              <Text style={styles.mapPillText}>5 porters nearby</Text>
             </View>
-          ))}
-          <View style={[styles.userDot, { left: "48%" as any, top: "50%" as any, transform: [{ translateX: -10 }, { translateY: -10 }] }]} />
-          <View style={styles.mapPill}>
-            <View style={styles.mapPillDot} />
-            <Text style={styles.mapPillText}>5 porters nearby</Text>
+            <View style={styles.expandHint}>
+              <Ionicons name="expand-outline" size={13} color={Colors.text} />
+              <Text style={styles.expandHintText}>Tap to expand</Text>
+            </View>
           </View>
-        </View>
+        </Pressable>
 
         {/* Heading */}
         <Text style={styles.eyebrow}>Delivery Speed</Text>
@@ -199,6 +262,59 @@ export default function DeliveryMethodScreen() {
           <Ionicons name="chevron-forward" size={16} color="#fff" />
         </Pressable>
       </View>
+
+      {/* Full-screen interactive map modal */}
+      <Modal visible={mapExpanded} animationType="slide" statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: Colors.background }}>
+          <MapboxGL.MapView
+            style={{ flex: 1 }}
+            styleURL="mapbox://styles/mapbox/dark-v11"
+            logoEnabled={false}
+            attributionEnabled={false}
+          >
+            <MapboxGL.Camera
+              bounds={{ ne: camNE, sw: camSW, paddingLeft: 60, paddingRight: 60, paddingTop: 80, paddingBottom: 80 }}
+              animationDuration={0}
+            />
+            <MapboxGL.ShapeSource
+              id="dmRouteFull"
+              shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+            >
+              <MapboxGL.LineLayer
+                id="dmRouteLineFull"
+                style={{ lineColor: "rgba(111,163,200,0.6)", lineWidth: 3, lineDasharray: [2, 2] }}
+              />
+            </MapboxGL.ShapeSource>
+            <MapboxGL.MarkerView coordinate={pickupCoord}>
+              <View style={styles.pickupMarker}>
+                <Ionicons name="location" size={14} color={Colors.gold} />
+              </View>
+            </MapboxGL.MarkerView>
+            <MapboxGL.MarkerView coordinate={dropoffCoord}>
+              <View style={styles.dropoffMarker}>
+                <Ionicons name="flag" size={12} color={Colors.steel} />
+              </View>
+            </MapboxGL.MarkerView>
+            {porterCoords.map((p) => (
+              <MapboxGL.MarkerView key={p.id} coordinate={p.coord}>
+                <View style={styles.porterBadgeView}>
+                  <Text style={styles.porterBadgeText}>{p.id}</Text>
+                </View>
+              </MapboxGL.MarkerView>
+            ))}
+          </MapboxGL.MapView>
+          <View style={[styles.mapPill, { top: 56 }]}>
+            <View style={styles.mapPillDot} />
+            <Text style={styles.mapPillText}>5 porters nearby</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.mapCloseBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => setMapExpanded(false)}
+          >
+            <Ionicons name="close" size={20} color={Colors.text} />
+          </Pressable>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -234,41 +350,43 @@ const styles = StyleSheet.create({
   mapCard: {
     height: 150,
     borderRadius: Radius.xl,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
     overflow: "hidden",
     marginBottom: 20,
-    position: "relative",
   },
-  gridLine: {
-    position: "absolute",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  porterBadge: {
-    position: "absolute",
+  pickupMarker: {
     width: 28,
     height: 28,
-    borderRadius: Radius.full,
+    borderRadius: 14,
+    backgroundColor: "rgba(229,201,122,0.15)",
+    borderWidth: 1.5,
+    borderColor: Colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropoffMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(111,163,200,0.15)",
+    borderWidth: 1.5,
+    borderColor: Colors.steel,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  porterBadgeView: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.navy,
     borderWidth: 1.5,
     borderColor: Colors.steel,
     alignItems: "center",
     justifyContent: "center",
   },
-  porterInitials: {
+  porterBadgeText: {
     fontSize: 9,
     fontFamily: Fonts.semibold,
     color: Colors.text,
-  },
-  userDot: {
-    position: "absolute",
-    width: 20,
-    height: 20,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.gold,
-    borderWidth: 3,
-    borderColor: "rgba(229,201,122,0.3)",
   },
   mapPill: {
     position: "absolute",
@@ -289,6 +407,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.steel,
   },
   mapPillText: {
+    fontSize: 11,
+    fontFamily: Fonts.medium,
+    color: Colors.text,
+  },
+  expandHint: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(5,11,22,0.8)",
+    borderRadius: Radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  expandHintText: {
     fontSize: 11,
     fontFamily: Fonts.medium,
     color: Colors.text,
@@ -424,5 +559,18 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: "#fff",
     letterSpacing: 0.3,
+  },
+  mapCloseBtn: {
+    position: "absolute",
+    top: 56,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(14,15,18,0.85)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

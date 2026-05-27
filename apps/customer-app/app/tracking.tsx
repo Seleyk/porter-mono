@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, Modal } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useBookingStore } from "@/store/bookingStore";
 import { subscribeToBooking } from "@/services/booking";
+import { fetchRoute } from "@/services/directions";
 import { ServiceRequest } from "@/lib/database.types";
 
 const STAGES = [
@@ -30,6 +31,7 @@ export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
   const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords } = useBookingStore();
   const [stageIdx, setStageIdx] = useState(0);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const completedRef = useRef(false);
 
   const pickupLng = pickupCoords?.lng ?? -73.9967;
@@ -38,7 +40,8 @@ export default function TrackingScreen() {
   const dropoffLat = dropoffCoords?.lat ?? 40.7467;
   const pickupCoord: [number, number] = [pickupLng, pickupLat];
   const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
-  const mapCenter: [number, number] = [(pickupLng + dropoffLng) / 2, (pickupLat + dropoffLat) / 2];
+
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
 
   function getDriverCoord(stage: number): [number, number] {
     if (stage === 0) return [pickupLng + 0.008, pickupLat + 0.004];
@@ -47,6 +50,21 @@ export default function TrackingScreen() {
     if (stage === 3) return [(pickupLng + dropoffLng) / 2, (pickupLat + dropoffLat) / 2];
     return dropoffCoord;
   }
+
+  const driverCoord = getDriverCoord(stageIdx);
+  const camNE: [number, number] = [
+    Math.max(pickupLng, dropoffLng, driverCoord[0]) + 0.01,
+    Math.max(pickupLat, dropoffLat, driverCoord[1]) + 0.01,
+  ];
+  const camSW: [number, number] = [
+    Math.min(pickupLng, dropoffLng, driverCoord[0]) - 0.01,
+    Math.min(pickupLat, dropoffLat, driverCoord[1]) - 0.01,
+  ];
+
+  // Fetch road-following route once on mount
+  useEffect(() => {
+    fetchRoute(pickupCoord, dropoffCoord).then(setRouteCoords);
+  }, []);
 
   // Auto-advance simulation — local timers, no Supabase writes needed
   useEffect(() => {
@@ -103,57 +121,64 @@ export default function TrackingScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 8 }}>
           {/* Live map */}
-          <View style={styles.mapCard}>
-            <MapboxGL.MapView
-              style={{ flex: 1 }}
-              styleURL="mapbox://styles/mapbox/dark-v11"
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              logoEnabled={false}
-              attributionEnabled={false}
-              compassEnabled={false}
-            >
-              <MapboxGL.Camera
-                zoomLevel={14}
-                centerCoordinate={mapCenter}
-                animationDuration={800}
-              />
-
-              {/* Dashed route line */}
-              <MapboxGL.ShapeSource
-                id="route"
-                shape={{ type: "Feature", geometry: { type: "LineString", coordinates: [pickupCoord, dropoffCoord] }, properties: {} }}
+          <Pressable onPress={() => setMapExpanded(true)}>
+            <View style={styles.mapCard}>
+              <MapboxGL.MapView
+                style={{ flex: 1 }}
+                styleURL="mapbox://styles/mapbox/dark-v11"
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+                logoEnabled={false}
+                attributionEnabled={false}
+                compassEnabled={false}
               >
-                <MapboxGL.LineLayer
-                  id="routeLine"
-                  style={{ lineColor: "rgba(111,163,200,0.5)", lineWidth: 2, lineDasharray: [2, 2] }}
+                <MapboxGL.Camera
+                  bounds={{ ne: camNE, sw: camSW, paddingLeft: 50, paddingRight: 50, paddingTop: 40, paddingBottom: 40 }}
+                  animationDuration={600}
                 />
-              </MapboxGL.ShapeSource>
 
-              {/* Pickup marker */}
-              <MapboxGL.MarkerView coordinate={pickupCoord}>
-                <View style={styles.pickupMarker}>
-                  <Ionicons name="location" size={14} color={Colors.gold} />
-                </View>
-              </MapboxGL.MarkerView>
+                {/* Dashed route line */}
+                <MapboxGL.ShapeSource
+                  id="route"
+                  shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+                >
+                  <MapboxGL.LineLayer
+                    id="routeLine"
+                    style={{ lineColor: "rgba(111,163,200,0.5)", lineWidth: 2, lineDasharray: [2, 2] }}
+                  />
+                </MapboxGL.ShapeSource>
 
-              {/* Dropoff marker */}
-              <MapboxGL.MarkerView coordinate={dropoffCoord}>
-                <View style={styles.dropoffMarker}>
-                  <Ionicons name="flag" size={12} color={Colors.steel} />
-                </View>
-              </MapboxGL.MarkerView>
+                {/* Pickup marker */}
+                <MapboxGL.MarkerView coordinate={pickupCoord}>
+                  <View style={styles.pickupMarker}>
+                    <Ionicons name="location" size={14} color={Colors.gold} />
+                  </View>
+                </MapboxGL.MarkerView>
 
-              {/* Animated driver marker */}
-              <MapboxGL.MarkerView coordinate={getDriverCoord(stageIdx)}>
-                <View style={styles.activePorter}>
-                  <Text style={styles.activePorterText}>P</Text>
-                </View>
-              </MapboxGL.MarkerView>
-            </MapboxGL.MapView>
-          </View>
+                {/* Dropoff marker */}
+                <MapboxGL.MarkerView coordinate={dropoffCoord}>
+                  <View style={styles.dropoffMarker}>
+                    <Ionicons name="flag" size={12} color={Colors.steel} />
+                  </View>
+                </MapboxGL.MarkerView>
+
+                {/* Animated driver marker */}
+                <MapboxGL.MarkerView coordinate={driverCoord}>
+                  <View style={styles.activePorter}>
+                    <Text style={styles.activePorterText}>P</Text>
+                  </View>
+                </MapboxGL.MarkerView>
+              </MapboxGL.MapView>
+
+              {/* Expand hint */}
+              <View style={styles.expandHint}>
+                <Ionicons name="expand-outline" size={13} color={Colors.text} />
+                <Text style={styles.expandHintText}>Tap to expand</Text>
+              </View>
+            </View>
+          </Pressable>
 
           {/* Stage progress bar */}
           <View style={styles.stageBar}>
@@ -237,6 +262,59 @@ export default function TrackingScreen() {
           </Pressable>
         )}
       </View>
+
+      {/* Full-screen map modal */}
+      <Modal visible={mapExpanded} animationType="slide" statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: Colors.background }}>
+          <MapboxGL.MapView
+            style={{ flex: 1 }}
+            styleURL="mapbox://styles/mapbox/dark-v11"
+            logoEnabled={false}
+            attributionEnabled={false}
+          >
+            <MapboxGL.Camera
+              bounds={{ ne: camNE, sw: camSW, paddingLeft: 60, paddingRight: 60, paddingTop: 80, paddingBottom: 80 }}
+              animationDuration={0}
+            />
+
+            {/* Route line */}
+            <MapboxGL.ShapeSource
+              id="routeFull"
+              shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+            >
+              <MapboxGL.LineLayer
+                id="routeLineFull"
+                style={{ lineColor: "rgba(111,163,200,0.6)", lineWidth: 3, lineDasharray: [2, 2] }}
+              />
+            </MapboxGL.ShapeSource>
+
+            <MapboxGL.MarkerView coordinate={pickupCoord}>
+              <View style={styles.pickupMarker}>
+                <Ionicons name="location" size={14} color={Colors.gold} />
+              </View>
+            </MapboxGL.MarkerView>
+
+            <MapboxGL.MarkerView coordinate={dropoffCoord}>
+              <View style={styles.dropoffMarker}>
+                <Ionicons name="flag" size={12} color={Colors.steel} />
+              </View>
+            </MapboxGL.MarkerView>
+
+            <MapboxGL.MarkerView coordinate={driverCoord}>
+              <View style={styles.activePorter}>
+                <Text style={styles.activePorterText}>P</Text>
+              </View>
+            </MapboxGL.MarkerView>
+          </MapboxGL.MapView>
+
+          <Pressable
+            style={({ pressed }) => [styles.mapCloseBtn, { opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => setMapExpanded(false)}
+          >
+            <Ionicons name="close" size={20} color={Colors.text} />
+          </Pressable>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -529,5 +607,35 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: "#fff",
     letterSpacing: 0.3,
+  },
+  mapCloseBtn: {
+    position: "absolute",
+    top: 56,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(14,15,18,0.8)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  expandHint: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(14,15,18,0.75)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  expandHintText: {
+    fontSize: 12,
+    fontFamily: Fonts.medium,
+    color: Colors.text,
   },
 });
