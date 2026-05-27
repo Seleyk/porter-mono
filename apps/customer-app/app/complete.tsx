@@ -21,10 +21,10 @@ const TIPS = [
 
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
-  const { deliverySpeed, bookingId, reset } = useBookingStore();
+  const { deliverySpeed, bookingId, reset, calculatedFare } = useBookingStore();
   const { user, profile } = useAuth();
   const speedLabel = deliverySpeed === "priority" ? "Priority Delivery" : deliverySpeed === "standard" ? "Standard Delivery" : "Scheduled Delivery";
-  const speedPrice = deliverySpeed === "priority" ? 28 : deliverySpeed === "standard" ? 18 : 16;
+  const speedPrice = calculatedFare ?? (deliverySpeed === "priority" ? 28 : deliverySpeed === "standard" ? 18 : 16);
   const [rating, setRating] = useState(0);
   const [tip, setTip] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);

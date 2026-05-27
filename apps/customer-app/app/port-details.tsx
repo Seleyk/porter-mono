@@ -17,9 +17,13 @@ const SIZES: { id: SizeKey; label: string; desc: string }[] = [
 
 export default function PortDetailsScreen() {
   const insets = useSafeAreaInsets();
-  const { itemCounts, specialRequests, setItemCounts, setSpecialRequests } = useBookingStore();
+  const { itemCounts, specialRequests, itemValueUSD, setItemCounts, setSpecialRequests, setItemValueUSD } = useBookingStore();
   const [counts, setCounts] = useState({ large: itemCounts.large, standard: itemCounts.standard, small: itemCounts.small });
   const [notes, setNotes] = useState(specialRequests);
+  const [itemValue, setItemValue] = useState(itemValueUSD ? itemValueUSD.toString() : "");
+
+  const parsedValue = parseFloat(itemValue);
+  const valueValid = !isNaN(parsedValue) && parsedValue >= 50;
 
   const adjust = (id: SizeKey, delta: number) => {
     setCounts((prev) => ({ ...prev, [id]: Math.max(0, prev[id] + delta) }));
@@ -87,6 +91,21 @@ export default function PortDetailsScreen() {
               </View>
             )}
 
+            {/* Declared item value */}
+            <Text style={styles.notesLabel}>Declared Item Value</Text>
+            <View style={styles.valueRow}>
+              <Text style={styles.valuePrefix}>$</Text>
+              <TextInput
+                style={styles.valueField}
+                placeholder="Minimum $50"
+                placeholderTextColor={Colors.textDim}
+                value={itemValue}
+                onChangeText={setItemValue}
+                keyboardType="decimal-pad"
+                selectionColor={Colors.steel}
+              />
+            </View>
+
             {/* Special requests */}
             <Text style={styles.notesLabel}>Special Requests</Text>
             <TextInput
@@ -103,11 +122,12 @@ export default function PortDetailsScreen() {
           </ScrollView>
 
           <Pressable
-            style={({ pressed }) => [styles.cta, { opacity: total > 0 ? pressed ? 0.85 : 1 : 0.4 }]}
+            style={({ pressed }) => [styles.cta, { opacity: (total > 0 && valueValid) ? pressed ? 0.85 : 1 : 0.4 }]}
             onPress={() => {
-              if (total > 0) {
+              if (total > 0 && valueValid) {
                 setItemCounts(counts);
                 setSpecialRequests(notes);
+                setItemValueUSD(parsedValue);
                 router.push("/dropoff-method");
               }
             }}
@@ -237,6 +257,29 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: "uppercase",
     marginBottom: 10,
+  },
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: Radius.lg,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+    gap: 4,
+  },
+  valuePrefix: {
+    fontSize: 16,
+    fontFamily: Fonts.semibold,
+    color: Colors.textMuted,
+  },
+  valueField: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: Fonts.regular,
+    color: Colors.text,
   },
   notes: {
     backgroundColor: "rgba(255,255,255,0.04)",

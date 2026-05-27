@@ -23,7 +23,7 @@ export default function PorterBoxPickupScreen() {
 
   const chargeDisplay = porterBoxChargeCents
     ? `$${(porterBoxChargeCents / 100).toFixed(2)}`
-    : "$8.00";
+    : "$9.99";
 
   async function handleCollected() {
     if (porterBoxOrderId) {

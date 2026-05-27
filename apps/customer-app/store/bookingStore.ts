@@ -33,6 +33,15 @@ interface BookingState {
   // Step 5 — delivery speed
   deliverySpeed: DeliverySpeed;
 
+  // Step 3 — declared item value (required for fare calculation)
+  itemValueUSD: number | null;
+
+  // Calculated fare for the selected speed tier
+  calculatedFare: number | null;
+
+  // Porter Box — storage duration selected by user
+  storageDays: number;
+
   // Created booking
   bookingId: string | null;
 
@@ -49,6 +58,9 @@ interface BookingState {
   setDropoffMethod: (method: DropoffMethod) => void;
   setSelectedBox: (id: string, name: string) => void;
   setDeliverySpeed: (speed: DeliverySpeed) => void;
+  setItemValueUSD: (v: number) => void;
+  setCalculatedFare: (v: number) => void;
+  setStorageDays: (days: number) => void;
   setBookingId: (id: string) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
   reset: () => void;
@@ -68,6 +80,9 @@ const initialState = {
   selectedBoxId: null,
   selectedBoxName: null,
   deliverySpeed: "priority" as DeliverySpeed,
+  itemValueUSD: null,
+  calculatedFare: null,
+  storageDays: 1,
   bookingId: null,
   porterBoxOrderId: null,
   porterBoxCode: null,
@@ -87,6 +102,9 @@ export const useBookingStore = create<BookingState>((set) => ({
   setSelectedBox: (selectedBoxId, selectedBoxName) =>
     set({ selectedBoxId, selectedBoxName }),
   setDeliverySpeed: (deliverySpeed) => set({ deliverySpeed }),
+  setItemValueUSD: (itemValueUSD) => set({ itemValueUSD }),
+  setCalculatedFare: (calculatedFare) => set({ calculatedFare }),
+  setStorageDays: (storageDays) => set({ storageDays }),
   setBookingId: (bookingId) => set({ bookingId }),
   setPorterBoxOrder: (porterBoxOrderId, porterBoxCode, porterBoxChargeCents) =>
     set({ porterBoxOrderId, porterBoxCode, porterBoxChargeCents }),

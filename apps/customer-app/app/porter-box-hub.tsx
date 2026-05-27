@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator, Alert, Modal } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { PorterHub } from "@/lib/database.types";
 import { useBookingStore } from "@/store/bookingStore";
 import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
+import { getBoxStorageFare } from "@/services/porterFare";
 
 const HOW_TO = [
   { step: "1", text: "Select a nearby Porter Box location." },
@@ -17,8 +18,6 @@ const HOW_TO = [
   { step: "3", text: "You receive a unique pickup code via SMS." },
   { step: "4", text: "Retrieve your items at any time — no rush." },
 ];
-
-const HUB_RATE_CENTS = 800; // $8.00 flat rate
 
 export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
@@ -31,6 +30,9 @@ export default function PorterBoxHubScreen() {
   const [activeOrders, setActiveOrders] = useState<PorterBoxOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [durationModalVisible, setDurationModalVisible] = useState(false);
+  const [pendingHub, setPendingHub] = useState<PorterHub | null>(null);
+  const [days, setDays] = useState(store.storageDays);
 
   useEffect(() => {
     supabase
@@ -45,7 +47,11 @@ export default function PorterBoxHubScreen() {
       .finally(() => setOrdersLoading(false));
   }, []);
 
-  async function handleDropOff(hub: PorterHub) {
+  async function handleDropOff(hub: PorterHub, storageDays: number) {
+    const fareResult = getBoxStorageFare(storageDays);
+    if (!fareResult.success) return;
+    const amountCents = Math.round(fareResult.fare.totalFareUSD * 100);
+    store.setStorageDays(storageDays);
     setPaymentLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -57,7 +63,7 @@ export default function PorterBoxHubScreen() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ hubId: hub.id, amount: HUB_RATE_CENTS }),
+          body: JSON.stringify({ hubId: hub.id, amount: amountCents }),
         }
       );
       const { clientSecret, orderId, pickupCode, error: fnError } = await res.json();
@@ -88,7 +94,7 @@ export default function PorterBoxHubScreen() {
         return;
       }
 
-      store.setPorterBoxOrder(orderId, pickupCode, HUB_RATE_CENTS);
+      store.setPorterBoxOrder(orderId, pickupCode, amountCents);
       store.setSelectedBox(hub.id, hub.name);
       router.push("/porter-box-pickup");
     } catch (e) {
@@ -198,7 +204,7 @@ export default function PorterBoxHubScreen() {
                   <Pressable
                     key={hub.id}
                     style={({ pressed }) => [styles.locationCard, { opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
-                    onPress={() => !paymentLoading && handleDropOff(hub)}
+                    onPress={() => { if (!paymentLoading) { setPendingHub(hub); setDays(store.storageDays); setDurationModalVisible(true); } }}
                     disabled={paymentLoading}
                   >
                     <View style={styles.locationIconWrap}>
@@ -209,7 +215,7 @@ export default function PorterBoxHubScreen() {
                       <Text style={styles.locationAddr}>{hub.address}</Text>
                       <View style={styles.locationMeta}>
                         <Ionicons name="cube-outline" size={12} color={Colors.textDim} />
-                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $8.00</Text>
+                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $9.99/day</Text>
                       </View>
                     </View>
                     {paymentLoading ? (
@@ -223,6 +229,53 @@ export default function PorterBoxHubScreen() {
             </>
           )}
         </ScrollView>
+
+        {/* Duration picker modal */}
+        <Modal
+          visible={durationModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDurationModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <Text style={styles.modalTitle}>How many days?</Text>
+              <Text style={styles.modalSub}>$9.99 / day · pick up anytime, no rush</Text>
+
+              <View style={styles.stepperRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  onPress={() => setDays((d) => Math.max(1, d - 1))}
+                >
+                  <Ionicons name="remove" size={20} color={Colors.text} />
+                </Pressable>
+                <Text style={styles.stepperValue}>{days}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  onPress={() => setDays((d) => Math.min(30, d + 1))}
+                >
+                  <Ionicons name="add" size={20} color={Colors.text} />
+                </Pressable>
+              </View>
+
+              <Text style={styles.modalPrice}>${(9.99 * days).toFixed(2)}</Text>
+
+              <Pressable
+                style={({ pressed }) => [styles.modalCta, { opacity: pressed ? 0.85 : 1 }]}
+                onPress={() => {
+                  setDurationModalVisible(false);
+                  if (pendingHub) handleDropOff(pendingHub, days);
+                }}
+              >
+                <Text style={styles.modalCtaText}>Continue to Payment</Text>
+              </Pressable>
+
+              <Pressable onPress={() => setDurationModalVisible(false)} style={{ marginTop: 4 }}>
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </View>
     </LinearGradient>
   );
@@ -469,5 +522,83 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: "center",
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#0B2A4A",
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.2)",
+    padding: 28,
+    paddingBottom: 44,
+    alignItems: "center",
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontFamily: Fonts.serif,
+    color: "#fff",
+    letterSpacing: -0.2,
+  },
+  modalSub: {
+    fontSize: 13,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+  },
+  stepperRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 24,
+    marginVertical: 8,
+  },
+  stepperBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.full,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepperValue: {
+    fontSize: 40,
+    fontFamily: Fonts.bold,
+    color: "#fff",
+    minWidth: 60,
+    textAlign: "center",
+  },
+  modalPrice: {
+    fontSize: 32,
+    fontFamily: Fonts.semibold,
+    color: Colors.gold,
+    letterSpacing: -0.5,
+  },
+  modalCta: {
+    width: "100%",
+    height: 54,
+    backgroundColor: Colors.midnight,
+    borderRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  modalCtaText: {
+    fontSize: 16,
+    fontFamily: Fonts.semibold,
+    color: "#fff",
+    letterSpacing: 0.2,
+  },
+  modalCancel: {
+    fontSize: 14,
+    fontFamily: Fonts.medium,
+    color: Colors.textMuted,
   },
 });

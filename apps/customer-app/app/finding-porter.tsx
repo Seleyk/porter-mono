@@ -64,6 +64,7 @@ export default function FindingPorterScreen() {
         dropoffMethod: store.dropoffMethod,
         selectedBoxName: store.selectedBoxName,
         deliverySpeed: store.deliverySpeed,
+        fareUSD: store.calculatedFare ?? 0,
       })
         .then((booking) => store.setBookingId(booking.id))
         .catch(console.error);

@@ -55,7 +55,7 @@ export default function TrackingScreen() {
 
   // Fetch road-following route once on mount
   useEffect(() => {
-    fetchRoute(pickupCoord, dropoffCoord).then(setRouteCoords);
+    fetchRoute(pickupCoord, dropoffCoord).then(({ coords }) => setRouteCoords(coords));
   }, []);
 
   // Drive the P badge — static positions for stages 0-2 and 4, road-following animation for stage 3

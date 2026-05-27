@@ -17,12 +17,6 @@ function toDominantSize(counts: { large: number; standard: number; small: number
   return "medium";
 }
 
-const BASE_PRICES: Record<DeliverySpeed, number> = {
-  priority: 28,
-  standard: 18,
-  scheduled: 16,
-};
-
 // Placeholder until Mapbox geocoding is wired — defaults to Midtown Manhattan
 const NYC_LAT = 40.7549;
 const NYC_LNG = -73.984;
@@ -39,10 +33,11 @@ interface CreateBookingParams {
   dropoffMethod: "door" | "box";
   selectedBoxName: string | null;
   deliverySpeed: DeliverySpeed;
+  fareUSD: number;
 }
 
 export async function createBooking(params: CreateBookingParams): Promise<ServiceRequest> {
-  const basePrice = BASE_PRICES[params.deliverySpeed];
+  const basePrice = params.fareUSD;
   const itemCount = params.itemCounts.large + params.itemCounts.standard + params.itemCounts.small;
 
   // Serialize extra metadata alongside any user notes

@@ -7,8 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-import { useBookingStore, DELIVERY_OPTIONS, type DeliverySpeed } from "@/store/bookingStore";
+import { useBookingStore, type DeliverySpeed } from "@/store/bookingStore";
 import { fetchRoute } from "@/services/directions";
+import { calculateFare, type LuggageSize } from "@/services/porterFare";
 
 const METHODS = [
   {
@@ -45,16 +46,31 @@ const PORTER_OFFSETS = [
   { id: "LO", dlng:  0.010, dlat:  0.001 },
 ];
 
+const SPEED_MULTIPLIERS: Record<DeliverySpeed, number> = {
+  priority:  1.00,
+  standard:  0.85,
+  scheduled: 0.75,
+};
+
+function getLuggageSize(counts: { large: number; standard: number; small: number }): LuggageSize {
+  const total = counts.large + counts.standard + counts.small;
+  if (total === 0) return "NONE";
+  if (counts.large > 0 || total >= 3) return "LARGE";
+  return "SMALL";
+}
+
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
-  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords } = useBookingStore();
+  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [mapExpanded, setMapExpanded] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [baseFare, setBaseFare] = useState(0);
 
-  const selected = DELIVERY_OPTIONS[method];
+  const tierPrice = (speed: DeliverySpeed) =>
+    Math.round(baseFare * SPEED_MULTIPLIERS[speed] * 100) / 100;
 
   const pickupLng  = pickupCoords?.lng  ?? -73.9967;
   const pickupLat  = pickupCoords?.lat  ?? 40.7484;
@@ -74,10 +90,22 @@ export default function DeliveryMethodScreen() {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
 
   useEffect(() => {
-    fetchRoute(pickupCoord, dropoffCoord).then(setRouteCoords);
+    fetchRoute(pickupCoord, dropoffCoord).then(({ coords, distanceMiles, durationMinutes }) => {
+      setRouteCoords(coords);
+      const result = calculateFare({
+        service: "DELIVERY",
+        itemValueUSD: itemValueUSD ?? 50,
+        distanceMiles,
+        durationMinutes,
+        luggageSize: getLuggageSize(itemCounts),
+      });
+      setBaseFare(result.success ? result.fare.totalFareUSD : 0);
+    });
   }, []);
 
-  useEffect(() => { initializePaymentSheet(); }, [method]);
+  useEffect(() => {
+    if (baseFare > 0) initializePaymentSheet();
+  }, [method, baseFare]);
 
   async function initializePaymentSheet() {
     setPaymentReady(false);
@@ -88,7 +116,7 @@ export default function DeliveryMethodScreen() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: selected.price * 100 }),
+          body: JSON.stringify({ amount: Math.round(tierPrice(method) * 100) }),
         }
       );
       const { clientSecret, error: fnError } = await res.json();
@@ -126,6 +154,7 @@ export default function DeliveryMethodScreen() {
       return;
     }
     setDeliverySpeed(method);
+    setCalculatedFare(tierPrice(method));
     router.push("/finding-porter");
   }
 
@@ -230,7 +259,9 @@ export default function DeliveryMethodScreen() {
                   <Text style={styles.methodDesc}>{m.desc}</Text>
                 </View>
                 <View style={styles.methodRight}>
-                  <Text style={[styles.methodPrice, active && styles.methodPriceActive]}>{m.price}</Text>
+                  <Text style={[styles.methodPrice, active && styles.methodPriceActive]}>
+                  {baseFare > 0 ? `$${tierPrice(m.id as DeliverySpeed).toFixed(2)}` : m.price}
+                </Text>
                   <Text style={styles.methodEta}>{m.eta}</Text>
                 </View>
               </Pressable>
@@ -248,7 +279,9 @@ export default function DeliveryMethodScreen() {
               {paymentLoading ? "Loading payment…" : "Pay with card"}
             </Text>
           </View>
-          <Text style={styles.paymentTotal}>${selected.price}</Text>
+          <Text style={styles.paymentTotal}>
+            {baseFare > 0 ? `$${tierPrice(method).toFixed(2)}` : "—"}
+          </Text>
         </View>
 
         <Pressable
