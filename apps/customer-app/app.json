@@ -34,7 +34,8 @@
       ["@stripe/stripe-react-native", {
         "merchantIdentifier": "merchant.com.porter.customer",
         "enableGooglePay": false
-      }]
+      }],
+      "@rnmapbox/maps"
     ],
     "scheme": "porter"
   }

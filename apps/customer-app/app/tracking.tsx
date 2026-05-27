@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useBookingStore } from "@/store/bookingStore";
 import { subscribeToBooking } from "@/services/booking";
@@ -25,17 +26,27 @@ const STATUS_TO_STAGE: Record<string, number> = {
   completed: 4,
 };
 
-const PORTERS = [
-  { initials: "JR", x: "22%", y: "48%" },
-  { initials: "MA", x: "65%", y: "22%" },
-  { initials: "EH", x: "12%", y: "64%" },
-];
-
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
-  const { bookingId, pickup, dropoff } = useBookingStore();
+  const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords } = useBookingStore();
   const [stageIdx, setStageIdx] = useState(0);
   const completedRef = useRef(false);
+
+  const pickupLng = pickupCoords?.lng ?? -73.9967;
+  const pickupLat = pickupCoords?.lat ?? 40.7484;
+  const dropoffLng = dropoffCoords?.lng ?? -73.9950;
+  const dropoffLat = dropoffCoords?.lat ?? 40.7467;
+  const pickupCoord: [number, number] = [pickupLng, pickupLat];
+  const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
+  const mapCenter: [number, number] = [(pickupLng + dropoffLng) / 2, (pickupLat + dropoffLat) / 2];
+
+  function getDriverCoord(stage: number): [number, number] {
+    if (stage === 0) return [pickupLng + 0.008, pickupLat + 0.004];
+    if (stage === 1) return [pickupLng + 0.008 * 0.65, pickupLat + 0.004 * 0.65];
+    if (stage === 2) return pickupCoord;
+    if (stage === 3) return [(pickupLng + dropoffLng) / 2, (pickupLat + dropoffLat) / 2];
+    return dropoffCoord;
+  }
 
   // Auto-advance simulation — local timers, no Supabase writes needed
   useEffect(() => {
@@ -91,23 +102,57 @@ export default function TrackingScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 8 }}>
-          {/* Mini map */}
+          {/* Live map */}
           <View style={styles.mapCard}>
-            {[25, 50, 75].map((p) => (
-              <View key={`h${p}`} style={[styles.gridLine, { top: `${p}%` as any, left: 0, right: 0, height: 1 }]} />
-            ))}
-            {[20, 40, 60, 80].map((p) => (
-              <View key={`v${p}`} style={[styles.gridLine, { left: `${p}%` as any, top: 0, bottom: 0, width: 1 }]} />
-            ))}
-            {PORTERS.map((p) => (
-              <View key={p.initials} style={[styles.porterBadge, { left: p.x as any, top: p.y as any, transform: [{ translateX: -14 }, { translateY: -14 }] }]}>
-                <Text style={styles.porterInitials}>{p.initials}</Text>
-              </View>
-            ))}
-            <View style={[styles.activePorter, { left: "49%" as any, top: "38%" as any, transform: [{ translateX: -18 }, { translateY: -18 }] }]}>
-              <Text style={styles.activePorterText}>P</Text>
-            </View>
-            <View style={[styles.userDot, { left: "49%" as any, top: "62%" as any, transform: [{ translateX: -10 }, { translateY: -10 }] }]} />
+            <MapboxGL.MapView
+              style={{ flex: 1 }}
+              styleURL="mapbox://styles/mapbox/dark-v11"
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled={false}
+            >
+              <MapboxGL.Camera
+                zoomLevel={14}
+                centerCoordinate={mapCenter}
+                animationDuration={800}
+              />
+
+              {/* Dashed route line */}
+              <MapboxGL.ShapeSource
+                id="route"
+                shape={{ type: "Feature", geometry: { type: "LineString", coordinates: [pickupCoord, dropoffCoord] }, properties: {} }}
+              >
+                <MapboxGL.LineLayer
+                  id="routeLine"
+                  style={{ lineColor: "rgba(111,163,200,0.5)", lineWidth: 2, lineDasharray: [2, 2] }}
+                />
+              </MapboxGL.ShapeSource>
+
+              {/* Pickup marker */}
+              <MapboxGL.MarkerView coordinate={pickupCoord}>
+                <View style={styles.pickupMarker}>
+                  <Ionicons name="location" size={14} color={Colors.gold} />
+                </View>
+              </MapboxGL.MarkerView>
+
+              {/* Dropoff marker */}
+              <MapboxGL.MarkerView coordinate={dropoffCoord}>
+                <View style={styles.dropoffMarker}>
+                  <Ionicons name="flag" size={12} color={Colors.steel} />
+                </View>
+              </MapboxGL.MarkerView>
+
+              {/* Animated driver marker */}
+              <MapboxGL.MarkerView coordinate={getDriverCoord(stageIdx)}>
+                <View style={styles.activePorter}>
+                  <Text style={styles.activePorterText}>P</Text>
+                </View>
+              </MapboxGL.MarkerView>
+            </MapboxGL.MapView>
           </View>
 
           {/* Stage progress bar */}
@@ -231,37 +276,12 @@ const styles = StyleSheet.create({
   mapCard: {
     height: 180,
     borderRadius: Radius.xl,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
     overflow: "hidden",
-    position: "relative",
-  },
-  gridLine: {
-    position: "absolute",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  porterBadge: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.navy,
-    borderWidth: 1,
-    borderColor: Colors.steel,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  porterInitials: {
-    fontSize: 9,
-    fontFamily: Fonts.semibold,
-    color: Colors.text,
   },
   activePorter: {
-    position: "absolute",
     width: 36,
     height: 36,
-    borderRadius: Radius.full,
+    borderRadius: 18,
     backgroundColor: Colors.midnight,
     borderWidth: 2,
     borderColor: Colors.steel,
@@ -273,14 +293,25 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.text,
   },
-  userDot: {
-    position: "absolute",
-    width: 20,
-    height: 20,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.gold,
-    borderWidth: 3,
-    borderColor: "rgba(229,201,122,0.3)",
+  pickupMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(229,201,122,0.15)",
+    borderWidth: 1.5,
+    borderColor: Colors.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropoffMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(111,163,200,0.15)",
+    borderWidth: 1.5,
+    borderColor: Colors.steel,
+    alignItems: "center",
+    justifyContent: "center",
   },
   stageBar: {
     flexDirection: "row",

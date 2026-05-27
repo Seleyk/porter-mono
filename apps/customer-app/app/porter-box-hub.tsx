@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useStripe } from "@stripe/stripe-react-native";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { PorterHub } from "@/lib/database.types";
 import { useBookingStore } from "@/store/bookingStore";
+import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
 
 const HOW_TO = [
   { step: "1", text: "Select a nearby Porter Box location." },
@@ -16,12 +18,19 @@ const HOW_TO = [
   { step: "4", text: "Retrieve your items at any time — no rush." },
 ];
 
+const HUB_RATE_CENTS = 800; // $8.00 flat rate
+
 export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
   const store = useBookingStore();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
   const [tab, setTab] = useState<"pickup" | "dropoff">("pickup");
   const [hubs, setHubs] = useState<PorterHub[]>([]);
   const [hubsLoading, setHubsLoading] = useState(true);
+  const [activeOrders, setActiveOrders] = useState<PorterBoxOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     supabase
@@ -30,12 +39,69 @@ export default function PorterBoxHubScreen() {
       .eq("is_active", true)
       .then(({ data }) => setHubs(data ?? []))
       .finally(() => setHubsLoading(false));
+
+    fetchActivePorterBoxOrders()
+      .then(setActiveOrders)
+      .finally(() => setOrdersLoading(false));
   }, []);
 
-  const handleSelectHub = (hub: PorterHub) => {
-    store.setSelectedBox(hub.id, hub.name);
-    router.push("/where-to");
-  };
+  async function handleDropOff(hub: PorterHub) {
+    setPaymentLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-porter-box-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ hubId: hub.id, amount: HUB_RATE_CENTS }),
+        }
+      );
+      const { clientSecret, orderId, pickupCode, error: fnError } = await res.json();
+      if (fnError || !clientSecret) throw new Error(fnError ?? "No clientSecret");
+
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: "Porter",
+        returnURL: "porter://stripe-redirect",
+        style: "alwaysDark",
+        applePay: { merchantCountryCode: "US" },
+        appearance: {
+          colors: {
+            primary: "#6FA3C8",
+            background: "#050B16",
+            componentBackground: "#0B2A4A",
+            componentText: "#F4F6F8",
+            placeholderText: "#F4F6F866",
+          },
+        },
+      });
+      if (initError) throw new Error(initError.message);
+
+      setPaymentLoading(false);
+      const { error: payError } = await presentPaymentSheet();
+      if (payError) {
+        if (payError.code !== "Canceled") Alert.alert("Payment failed", payError.message);
+        return;
+      }
+
+      store.setPorterBoxOrder(orderId, pickupCode, HUB_RATE_CENTS);
+      store.setSelectedBox(hub.id, hub.name);
+      router.push("/porter-box-pickup");
+    } catch (e) {
+      setPaymentLoading(false);
+      Alert.alert("Error", e instanceof Error ? e.message : "Something went wrong");
+    }
+  }
+
+  function handleViewPickup(order: PorterBoxOrder) {
+    store.setPorterBoxOrder(order.id, order.pickup_code, order.charge_cents);
+    store.setSelectedBox(order.hub_id, order.porter_hubs?.name ?? "Porter Box");
+    router.push("/porter-box-pickup");
+  }
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -71,25 +137,40 @@ export default function PorterBoxHubScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 8 }}>
           {tab === "pickup" ? (
             <>
-              {/* Active pickup */}
-              <View style={styles.activeCard}>
-                <View style={styles.activeCardHeader}>
-                  <View style={styles.activePill}>
-                    <View style={styles.activeDot} />
-                    <Text style={styles.activePillText}>Ready for pickup</Text>
-                  </View>
-                  <Text style={styles.activeTimer}>2h 14m stored</Text>
+              {ordersLoading ? (
+                <ActivityIndicator color={Colors.steel} style={{ marginTop: 24 }} />
+              ) : activeOrders.length === 0 ? (
+                <View style={styles.emptyOrders}>
+                  <Ionicons name="cube-outline" size={32} color={Colors.textDim} />
+                  <Text style={styles.emptyOrdersTitle}>No active storage</Text>
+                  <Text style={styles.emptyOrdersSub}>
+                    Switch to Drop Off to store items at a nearby Porter Box.
+                  </Text>
                 </View>
-                <Text style={styles.activeTitle}>Your items are waiting</Text>
-                <Text style={styles.activeSub}>Porter Box · Madison · 150 E 42nd St</Text>
-                <Pressable
-                  style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
-                  onPress={() => router.push("/porter-box-pickup")}
-                >
-                  <Text style={styles.pickupBtnText}>Get Pickup Code</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#fff" />
-                </Pressable>
-              </View>
+              ) : (
+                activeOrders.map((order) => (
+                  <View key={order.id} style={styles.activeCard}>
+                    <View style={styles.activeCardHeader}>
+                      <View style={styles.activePill}>
+                        <View style={styles.activeDot} />
+                        <Text style={styles.activePillText}>Ready for pickup</Text>
+                      </View>
+                      <Text style={styles.activeTimer}>{formatDuration(order.dropped_at)}</Text>
+                    </View>
+                    <Text style={styles.activeTitle}>Your items are waiting</Text>
+                    <Text style={styles.activeSub}>
+                      Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
+                      onPress={() => handleViewPickup(order)}
+                    >
+                      <Text style={styles.pickupBtnText}>Get Pickup Code</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#fff" />
+                    </Pressable>
+                  </View>
+                ))
+              )}
 
               {/* How to collect */}
               <Text style={styles.sectionLabel}>HOW TO COLLECT</Text>
@@ -116,8 +197,9 @@ export default function PorterBoxHubScreen() {
                 hubs.map((hub) => (
                   <Pressable
                     key={hub.id}
-                    style={({ pressed }) => [styles.locationCard, { opacity: pressed ? 0.85 : 1 }]}
-                    onPress={() => handleSelectHub(hub)}
+                    style={({ pressed }) => [styles.locationCard, { opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
+                    onPress={() => !paymentLoading && handleDropOff(hub)}
+                    disabled={paymentLoading}
                   >
                     <View style={styles.locationIconWrap}>
                       <Ionicons name="cube-outline" size={22} color={Colors.gold} />
@@ -127,10 +209,14 @@ export default function PorterBoxHubScreen() {
                       <Text style={styles.locationAddr}>{hub.address}</Text>
                       <View style={styles.locationMeta}>
                         <Ionicons name="cube-outline" size={12} color={Colors.textDim} />
-                        <Text style={styles.locationMetaText}>{hub.capacity} slots</Text>
+                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $8.00</Text>
                       </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+                    {paymentLoading ? (
+                      <ActivityIndicator size="small" color={Colors.steel} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+                    )}
                   </Pressable>
                 ))
               )}
@@ -265,6 +351,24 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: 0.2,
   },
+  emptyOrders: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 40,
+  },
+  emptyOrdersTitle: {
+    fontSize: 17,
+    fontFamily: Fonts.semibold,
+    color: Colors.text,
+  },
+  emptyOrdersSub: {
+    fontSize: 13,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 260,
+  },
   sectionLabel: {
     fontSize: 11,
     fontFamily: Fonts.semibold,
@@ -352,10 +456,6 @@ const styles = StyleSheet.create({
   locationMetaText: {
     fontSize: 11,
     fontFamily: Fonts.regular,
-    color: Colors.textDim,
-  },
-  locationMetaDot: {
-    fontSize: 11,
     color: Colors.textDim,
   },
   emptyHubs: {

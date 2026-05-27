@@ -4,14 +4,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-
-const CHARGE = [
-  { label: "Storage · 2h 14m", value: "$22.33" },
-  { label: "Service fee", value: "$2.00" },
-];
+import { useAuth } from "@/context/AuthContext";
+import { useBookingStore } from "@/store/bookingStore";
 
 export default function PorterBoxCollectedScreen() {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
+  const { porterBoxChargeCents, selectedBoxName, reset } = useBookingStore();
+
+  const firstName = profile?.first_name ?? "there";
+  const chargeAmount = porterBoxChargeCents ? porterBoxChargeCents / 100 : 8;
+  const serviceFee = 2.0;
+  const total = chargeAmount + serviceFee;
+
+  const CHARGE = [
+    { label: "Porter Box storage", value: `$${chargeAmount.toFixed(2)}` },
+    { label: "Service fee", value: `$${serviceFee.toFixed(2)}` },
+  ];
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -30,10 +39,10 @@ export default function PorterBoxCollectedScreen() {
           <Text style={styles.eyebrow}>All Done</Text>
           <Text style={styles.heading}>
             Safe travels,{"\n"}
-            <Text style={styles.headingItalic}>Susan.</Text>
+            <Text style={styles.headingItalic}>{firstName}.</Text>
           </Text>
           <Text style={styles.sub}>
-            Your items were stored safely at Porter Box · Madison for 2h 14m.
+            Your items were stored safely at {selectedBoxName ?? "Porter Box"}.
           </Text>
         </View>
 
@@ -49,9 +58,8 @@ export default function PorterBoxCollectedScreen() {
           <View style={styles.chargeDivider} />
           <View style={styles.chargeRow}>
             <Text style={styles.chargeTotal}>Total charged</Text>
-            <Text style={styles.chargeTotalValue}>$24.33</Text>
+            <Text style={styles.chargeTotalValue}>${total.toFixed(2)}</Text>
           </View>
-          <Text style={styles.chargeNote}>Charged to Visa ···· 4291</Text>
         </View>
 
         <View style={{ flex: 1 }} />
@@ -60,13 +68,13 @@ export default function PorterBoxCollectedScreen() {
         <View style={styles.actions}>
           <Pressable
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
-            onPress={() => router.replace("/(tabs)")}
+            onPress={() => { reset(); router.replace("/(tabs)"); }}
           >
             <Text style={styles.ctaText}>Back to Home</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => router.push("/porter-box-hub")}
+            onPress={() => { reset(); router.push("/porter-box-hub"); }}
           >
             <Text style={styles.secondaryBtnText}>Use Porter Box Again</Text>
           </Pressable>
@@ -173,13 +181,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: Fonts.bold,
     color: "#fff",
-  },
-  chargeNote: {
-    fontSize: 11,
-    fontFamily: Fonts.regular,
-    color: Colors.textDim,
-    textAlign: "right",
-    marginTop: -4,
   },
   actions: {
     width: "100%",

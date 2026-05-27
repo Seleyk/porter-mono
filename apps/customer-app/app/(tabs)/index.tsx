@@ -1,9 +1,11 @@
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { useRef, useEffect } from "react";
+import { StyleSheet, Text, View, Pressable, ScrollView, Animated } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import MapboxGL from "@rnmapbox/maps";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -24,12 +26,14 @@ const RECENT = [
   { label: "553 W 161st St", sub: "New York, NY · last week" },
 ];
 
-const PORTERS = [
-  { initials: "JR", x: "24%", y: "50%" },
-  { initials: "MA", x: "67%", y: "24%" },
-  { initials: "EH", x: "11%", y: "66%" },
-  { initials: "TK", x: "41%", y: "72%" },
-  { initials: "LO", x: "77%", y: "61%" },
+const NYC_CENTER: [number, number] = [-73.9967, 40.7484];
+
+const FAKE_DRIVERS = [
+  { id: "JR", coords: [-73.9940, 40.7501] as [number, number] },
+  { id: "MA", coords: [-73.9995, 40.7512] as [number, number] },
+  { id: "EH", coords: [-73.9930, 40.7469] as [number, number] },
+  { id: "TK", coords: [-73.9978, 40.7460] as [number, number] },
+  { id: "LO", coords: [-73.9950, 40.7490] as [number, number] },
 ];
 
 const MAP_H = 200;
@@ -41,6 +45,17 @@ export default function HomeScreen() {
   const initials = profile
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
     : "?";
+
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -125,42 +140,51 @@ export default function HomeScreen() {
           </View>
 
           <View style={[styles.mapCard, { height: MAP_H }]}>
-            {/* Subtle grid lines */}
-            {[25, 50, 75].map((p) => (
-              <View key={`h${p}`} style={[styles.gridLine, styles.hLine, { top: `${p}%` as any }]} />
-            ))}
-            {[20, 40, 60, 80].map((p) => (
-              <View key={`v${p}`} style={[styles.gridLine, styles.vLine, { left: `${p}%` as any }]} />
-            ))}
+            <MapboxGL.MapView
+              style={{ flex: 1 }}
+              styleURL="mapbox://styles/mapbox/dark-v11"
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled={false}
+            >
+              <MapboxGL.Camera
+                zoomLevel={14.5}
+                centerCoordinate={NYC_CENTER}
+                animationDuration={0}
+              />
 
-            {/* Porter avatars */}
-            {PORTERS.map((p) => (
-              <View
-                key={p.initials}
-                style={[
-                  styles.porterBadge,
-                  { left: p.x as any, top: p.y as any, transform: [{ translateX: -16 }, { translateY: -16 }] },
-                ]}
-              >
-                <Text style={styles.porterInitials}>{p.initials}</Text>
-              </View>
-            ))}
+              {/* User dot */}
+              <MapboxGL.MarkerView coordinate={NYC_CENTER}>
+                <View style={styles.userDot} />
+              </MapboxGL.MarkerView>
 
-            {/* User location dot */}
-            <View
-              style={[
-                styles.userDot,
-                { left: "49%" as any, top: "52%" as any, transform: [{ translateX: -10 }, { translateY: -10 }] },
-              ]}
-            />
+              {/* Pulsing driver markers */}
+              {FAKE_DRIVERS.map((d) => (
+                <MapboxGL.MarkerView key={d.id} coordinate={d.coords}>
+                  <View style={styles.driverMarkerWrap}>
+                    <Animated.View
+                      style={[styles.driverPulse, {
+                        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+                        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
+                      }]}
+                    />
+                    <View style={styles.driverBadge}>
+                      <Text style={styles.driverInitials}>{d.id}</Text>
+                    </View>
+                  </View>
+                </MapboxGL.MarkerView>
+              ))}
+            </MapboxGL.MapView>
 
-            {/* 5 porters nearby pill */}
+            {/* Overlays */}
             <View style={styles.nearbyPill}>
               <View style={styles.nearbyDot} />
               <Text style={styles.nearbyText}>5 porters nearby</Text>
             </View>
-
-            {/* Expand button */}
             <Pressable style={({ pressed }) => [styles.expandBtn, { opacity: pressed ? 0.7 : 1 }]}>
               <Text style={styles.expandText}>Expand</Text>
               <Ionicons name="chevron-forward" size={13} color={Colors.text} />
@@ -314,44 +338,41 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
-  gridLine: {
-    position: "absolute",
-    backgroundColor: "rgba(255,255,255,0.04)",
-  },
-  hLine: {
-    left: 0,
-    right: 0,
-    height: 1,
-  },
-  vLine: {
-    top: 0,
-    bottom: 0,
-    width: 1,
-  },
-  porterBadge: {
-    position: "absolute",
-    width: 32,
-    height: 32,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  porterInitials: {
-    fontSize: 10,
-    fontFamily: Fonts.semibold,
-    color: Colors.text,
-  },
   userDot: {
-    position: "absolute",
     width: 20,
     height: 20,
-    borderRadius: Radius.full,
+    borderRadius: 10,
     backgroundColor: "#D4A843",
     borderWidth: 3,
     borderColor: "rgba(212,168,67,0.3)",
+  },
+  driverMarkerWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 36,
+    height: 36,
+  },
+  driverPulse: {
+    position: "absolute",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.steel,
+  },
+  driverBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.navy,
+    borderWidth: 1.5,
+    borderColor: Colors.steel,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  driverInitials: {
+    fontSize: 9,
+    fontFamily: Fonts.semibold,
+    color: Colors.text,
   },
   nearbyPill: {
     position: "absolute",

@@ -36,6 +36,11 @@ interface BookingState {
   // Created booking
   bookingId: string | null;
 
+  // Porter Box order
+  porterBoxOrderId: string | null;
+  porterBoxCode: string | null;
+  porterBoxChargeCents: number | null;
+
   // Actions
   setRoute: (pickup: string, dropoff: string, pickupCoords?: LatLng | null, dropoffCoords?: LatLng | null) => void;
   setItemType: (type: ItemType) => void;
@@ -45,6 +50,7 @@ interface BookingState {
   setSelectedBox: (id: string, name: string) => void;
   setDeliverySpeed: (speed: DeliverySpeed) => void;
   setBookingId: (id: string) => void;
+  setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
   reset: () => void;
 }
 
@@ -63,6 +69,9 @@ const initialState = {
   selectedBoxName: null,
   deliverySpeed: "priority" as DeliverySpeed,
   bookingId: null,
+  porterBoxOrderId: null,
+  porterBoxCode: null,
+  porterBoxChargeCents: null,
 };
 
 export const useBookingStore = create<BookingState>((set) => ({
@@ -79,6 +88,8 @@ export const useBookingStore = create<BookingState>((set) => ({
     set({ selectedBoxId, selectedBoxName }),
   setDeliverySpeed: (deliverySpeed) => set({ deliverySpeed }),
   setBookingId: (bookingId) => set({ bookingId }),
+  setPorterBoxOrder: (porterBoxOrderId, porterBoxCode, porterBoxChargeCents) =>
+    set({ porterBoxOrderId, porterBoxCode, porterBoxChargeCents }),
   reset: () => set(initialState),
 }));
 

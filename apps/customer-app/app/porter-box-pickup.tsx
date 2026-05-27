@@ -1,20 +1,40 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { StyleSheet, Text, View, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-
-const PICKUP_CODE = "7 4 2 9";
+import { useBookingStore } from "@/store/bookingStore";
+import { markOrderCollected } from "@/services/porterBox";
 
 const STEPS = [
-  { icon: "location-outline" as const, text: "Go to Porter Box · Madison, 150 E 42nd St" },
+  { icon: "location-outline" as const, text: "Go to your Porter Box location" },
   { icon: "keypad-outline" as const, text: "Enter your code on the locker keypad" },
   { icon: "cube-outline" as const, text: "Collect your items and enjoy" },
 ];
 
 export default function PorterBoxPickupScreen() {
   const insets = useSafeAreaInsets();
+  const { porterBoxOrderId, porterBoxCode, porterBoxChargeCents, selectedBoxName } = useBookingStore();
+
+  const displayCode = porterBoxCode
+    ? porterBoxCode.split("").join(" ")
+    : "— — — —";
+
+  const chargeDisplay = porterBoxChargeCents
+    ? `$${(porterBoxChargeCents / 100).toFixed(2)}`
+    : "$8.00";
+
+  async function handleCollected() {
+    if (porterBoxOrderId) {
+      const { error } = await markOrderCollected(porterBoxOrderId);
+      if (error) {
+        Alert.alert("Error", "Could not mark order as collected. Please try again.");
+        return;
+      }
+    }
+    router.replace("/porter-box-collected");
+  }
 
   return (
     <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
@@ -55,15 +75,17 @@ export default function PorterBoxPickupScreen() {
             </View>
           </View>
           <View style={styles.storagePill}>
-            <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.storagePillText}>2h 14m stored · $22.33</Text>
+            <Ionicons name="cube-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.storagePillText}>
+              {selectedBoxName ?? "Porter Box"} · {chargeDisplay}
+            </Text>
           </View>
         </View>
 
         {/* Code display */}
         <Text style={styles.codeLabel}>YOUR PICKUP CODE</Text>
-        <Text style={styles.code}>{PICKUP_CODE}</Text>
-        <Text style={styles.codeSub}>Show this code at the locker keypad</Text>
+        <Text style={styles.code}>{displayCode}</Text>
+        <Text style={styles.codeSub}>Enter this code at the locker keypad</Text>
 
         {/* Steps */}
         <View style={styles.steps}>
@@ -81,7 +103,7 @@ export default function PorterBoxPickupScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
-          onPress={() => router.replace("/porter-box-collected")}
+          onPress={handleCollected}
         >
           <Text style={styles.ctaText}>I've Collected My Items</Text>
           <Ionicons name="chevron-forward" size={16} color="#fff" />
