@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
+import { useBookingStore } from "@/store/bookingStore";
 import { getCustomerBookings } from "@/services/booking";
 import { ServiceRequest } from "@/lib/database.types";
 
@@ -25,8 +26,8 @@ function statusLabel(status: string): string {
     case "pending":   return "Awaiting porter";
     case "matched":   return "Porter assigned";
     case "accepted":  return "Porter en route";
-    case "picked_up": return "Items secured";
-    case "completed": return "Collected";
+    case "picked_up": return "In transit";
+    case "completed": return "Delivered";
     case "cancelled": return "Cancelled";
     default:          return status;
   }
@@ -56,18 +57,18 @@ function formatDate(iso: string): string {
 export default function PortsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [boxes, setBoxes] = useState<ServiceRequest[]>([]);
+  const [bookings, setBookings] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     getCustomerBookings(user.id)
-      .then((all) => setBoxes(all.filter((b) => isBox(b.special_instructions))))
+      .then(setBookings)
       .finally(() => setLoading(false));
   }, [user]);
 
-  const active = boxes.filter((b) => ACTIVE_STATUSES.has(b.status));
-  const past = boxes.filter((b) => !ACTIVE_STATUSES.has(b.status));
+  const active = bookings.filter((b) => ACTIVE_STATUSES.has(b.status));
+  const past   = bookings.filter((b) => !ACTIVE_STATUSES.has(b.status));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -79,17 +80,17 @@ export default function PortsScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.eyebrow}>My Boxes</Text>
+              <Text style={styles.eyebrow}>Activity</Text>
               <Text style={styles.heading}>
                 Your porter{"\n"}
-                <Text style={styles.headingItalic}>boxes.</Text>
+                <Text style={styles.headingItalic}>history.</Text>
               </Text>
             </View>
             <Pressable
               style={({ pressed }) => [styles.newBoxBtn, { opacity: pressed ? 0.8 : 1 }]}
               onPress={() => router.push("/porter-box-hub")}
             >
-              <Ionicons name="add" size={16} color={Colors.bgDeep} />
+              <Ionicons name="cube-outline" size={15} color={Colors.bgDeep} />
               <Text style={styles.newBoxText}>New Box</Text>
             </Pressable>
           </View>
@@ -101,61 +102,75 @@ export default function PortsScreen() {
           </View>
         ) : (
           <>
-            {/* ── Active boxes ── */}
+            {/* ── Active ── */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>ACTIVE</Text>
 
               {active.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <View style={styles.emptyIconWrap}>
-                    <Ionicons name="cube-outline" size={28} color={Colors.textDim} />
+                    <Ionicons name="navigate-outline" size={28} color={Colors.textDim} />
                   </View>
-                  <Text style={styles.emptyTitle}>No active boxes</Text>
+                  <Text style={styles.emptyTitle}>No active bookings</Text>
                   <Text style={styles.emptyDesc}>
-                    Book a Porter Box and your active reservations will appear here.
+                    Book a delivery or Porter Box and it will appear here in real time.
                   </Text>
                   <Pressable
                     style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
-                    onPress={() => router.push("/porter-box-hub")}
+                    onPress={() => router.push("/where-to")}
                   >
-                    <Text style={styles.emptyBtnText}>Find a Porter Box</Text>
+                    <Text style={styles.emptyBtnText}>Book a delivery</Text>
                     <Ionicons name="chevron-forward" size={14} color={Colors.steel} />
                   </Pressable>
                 </View>
               ) : (
-                active.map((box) => (
-                  <ActiveBoxCard key={box.id} box={box} />
-                ))
+                active.map((b) =>
+                  isBox(b.special_instructions)
+                    ? <ActiveBoxCard key={b.id} box={b} />
+                    : <ActiveDeliveryCard key={b.id} booking={b} />
+                )
               )}
             </View>
 
-            {/* ── Past boxes ── */}
+            {/* ── Past ── */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>PAST</Text>
 
               {past.length === 0 ? (
-                <Text style={styles.pastEmpty}>No past boxes yet.</Text>
+                <Text style={styles.pastEmpty}>No past bookings yet.</Text>
               ) : (
                 <View style={styles.pastCard}>
-                  {past.map((box, i) => (
+                  {past.map((b, i) => (
                     <View
-                      key={box.id}
+                      key={b.id}
                       style={[styles.pastRow, i < past.length - 1 && styles.pastRowDivider]}
                     >
                       <View style={styles.pastIconWrap}>
-                        <Ionicons name="cube-outline" size={18} color={Colors.textDim} />
+                        <Ionicons
+                          name={isBox(b.special_instructions) ? "cube-outline" : "car-outline"}
+                          size={18}
+                          color={Colors.textDim}
+                        />
                       </View>
                       <View style={styles.pastInfo}>
-                        <Text style={styles.pastHub}>{parseHub(box.special_instructions)}</Text>
-                        <Text style={styles.pastDate}>{formatDate(box.created_at)}</Text>
+                        <Text style={styles.pastHub} numberOfLines={1}>
+                          {isBox(b.special_instructions)
+                            ? parseHub(b.special_instructions)
+                            : b.pickup_address ?? "Pickup"}
+                        </Text>
+                        <Text style={styles.pastDate}>
+                          {isBox(b.special_instructions)
+                            ? formatDate(b.created_at)
+                            : `→ ${b.dropoff_address ?? "Dropoff"} · ${formatDate(b.created_at)}`}
+                        </Text>
                       </View>
                       <View style={styles.pastRight}>
-                        {box.total_price != null && (
-                          <Text style={styles.pastPrice}>${box.total_price}</Text>
+                        {b.total_price != null && (
+                          <Text style={styles.pastPrice}>${b.total_price}</Text>
                         )}
-                        <View style={[styles.statusPill, { borderColor: statusColor(box.status) + "40" }]}>
-                          <Text style={[styles.statusText, { color: statusColor(box.status) }]}>
-                            {statusLabel(box.status)}
+                        <View style={[styles.statusPill, { borderColor: statusColor(b.status) + "40" }]}>
+                          <Text style={[styles.statusText, { color: statusColor(b.status) }]}>
+                            {statusLabel(b.status)}
                           </Text>
                         </View>
                       </View>
@@ -171,18 +186,59 @@ export default function PortsScreen() {
   );
 }
 
+// ─── Active delivery card ─────────────────────────────────────────────────────
+
+function ActiveDeliveryCard({ booking }: { booking: ServiceRequest }) {
+  const color = statusColor(booking.status);
+  const label = statusLabel(booking.status);
+  const { setRoute, setBookingId } = useBookingStore();
+
+  function handleTrack() {
+    setRoute(booking.pickup_address ?? "", booking.dropoff_address ?? "", null, null);
+    setBookingId(booking.id);
+    router.push("/tracking");
+  }
+
+  return (
+    <View style={styles.activeCard}>
+      <View style={[styles.activeAccent, { backgroundColor: color }]} />
+      <View style={styles.activeContent}>
+        <View style={styles.activeTopRow}>
+          <View style={[styles.activeIconWrap, { backgroundColor: "rgba(111,163,200,0.1)", borderColor: "rgba(111,163,200,0.2)" }]}>
+            <Ionicons name="car-outline" size={20} color={Colors.steel} />
+          </View>
+          <View style={[styles.statusPill, { borderColor: color + "50" }]}>
+            <View style={[styles.statusDot, { backgroundColor: color }]} />
+            <Text style={[styles.statusText, { color }]}>{label}</Text>
+          </View>
+        </View>
+        <Text style={styles.activeHub} numberOfLines={1}>{booking.pickup_address}</Text>
+        <Text style={styles.activeAddress} numberOfLines={1}>→ {booking.dropoff_address}</Text>
+        <View style={styles.activeFooter}>
+          <Text style={styles.activeDate}>{formatDate(booking.created_at)}</Text>
+          <Pressable
+            style={({ pressed }) => [styles.trackBtn, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={handleTrack}
+          >
+            <Ionicons name="navigate-outline" size={13} color={Colors.bgDeep} />
+            <Text style={styles.trackBtnText}>Track</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Active box card ──────────────────────────────────────────────────────────
 
 function ActiveBoxCard({ box }: { box: ServiceRequest }) {
-  const hub = parseHub(box.special_instructions);
+  const hub   = parseHub(box.special_instructions);
   const color = statusColor(box.status);
   const label = statusLabel(box.status);
 
   return (
     <View style={styles.activeCard}>
-      {/* Status bar accent */}
       <View style={[styles.activeAccent, { backgroundColor: color }]} />
-
       <View style={styles.activeContent}>
         <View style={styles.activeTopRow}>
           <View style={styles.activeIconWrap}>
@@ -193,10 +249,8 @@ function ActiveBoxCard({ box }: { box: ServiceRequest }) {
             <Text style={[styles.statusText, { color }]}>{label}</Text>
           </View>
         </View>
-
         <Text style={styles.activeHub}>{hub}</Text>
         <Text style={styles.activeAddress}>{box.dropoff_address}</Text>
-
         <View style={styles.activeFooter}>
           <Text style={styles.activeDate}>{formatDate(box.created_at)}</Text>
           {box.total_price != null && (
@@ -214,7 +268,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgDeep },
   scroll: { paddingHorizontal: 20 },
 
-  // Header
   header: { marginTop: 20, marginBottom: 28 },
   headerTop: {
     flexDirection: "row",
@@ -256,7 +309,6 @@ const styles = StyleSheet.create({
 
   loadingWrap: { paddingTop: 60, alignItems: "center" },
 
-  // Sections
   section: { marginBottom: 32 },
   sectionLabel: {
     fontSize: 11,
@@ -266,7 +318,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // Empty state
   emptyCard: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -317,7 +368,6 @@ const styles = StyleSheet.create({
     color: Colors.steel,
   },
 
-  // Active box card
   activeCard: {
     backgroundColor: Colors.cardElev,
     borderRadius: Radius.xl,
@@ -351,8 +401,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   activeHub: {
-    fontSize: 17,
-    fontFamily: Fonts.serifBold,
+    fontSize: 15,
+    fontFamily: Fonts.semibold,
     color: Colors.text,
     letterSpacing: -0.1,
   },
@@ -377,8 +427,21 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
     color: Colors.text,
   },
+  trackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.steel,
+    borderRadius: Radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  trackBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts.semibold,
+    color: Colors.bgDeep,
+  },
 
-  // Status pill
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -398,7 +461,6 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.semibold,
   },
 
-  // Past rows
   pastEmpty: {
     fontSize: 13,
     fontFamily: Fonts.regular,

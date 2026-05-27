@@ -42,29 +42,40 @@ export default function TrackingScreen() {
   const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
 
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
+  const [driverCoord, setDriverCoord] = useState<[number, number]>([pickupLng + 0.008, pickupLat + 0.004]);
 
-  function getDriverCoord(stage: number): [number, number] {
-    if (stage === 0) return [pickupLng + 0.008, pickupLat + 0.004];
-    if (stage === 1) return [pickupLng + 0.008 * 0.65, pickupLat + 0.004 * 0.65];
-    if (stage === 2) return pickupCoord;
-    if (stage === 3) return [(pickupLng + dropoffLng) / 2, (pickupLat + dropoffLat) / 2];
-    return dropoffCoord;
-  }
-
-  const driverCoord = getDriverCoord(stageIdx);
   const camNE: [number, number] = [
-    Math.max(pickupLng, dropoffLng, driverCoord[0]) + 0.01,
-    Math.max(pickupLat, dropoffLat, driverCoord[1]) + 0.01,
+    Math.max(pickupLng, dropoffLng) + 0.015,
+    Math.max(pickupLat, dropoffLat) + 0.015,
   ];
   const camSW: [number, number] = [
-    Math.min(pickupLng, dropoffLng, driverCoord[0]) - 0.01,
-    Math.min(pickupLat, dropoffLat, driverCoord[1]) - 0.01,
+    Math.min(pickupLng, dropoffLng) - 0.015,
+    Math.min(pickupLat, dropoffLat) - 0.015,
   ];
 
   // Fetch road-following route once on mount
   useEffect(() => {
     fetchRoute(pickupCoord, dropoffCoord).then(setRouteCoords);
   }, []);
+
+  // Drive the P badge — static positions for stages 0-2 and 4, road-following animation for stage 3
+  useEffect(() => {
+    if (stageIdx === 0) { setDriverCoord([pickupLng + 0.008, pickupLat + 0.004]); return; }
+    if (stageIdx === 1) { setDriverCoord([pickupLng + 0.003, pickupLat + 0.001]); return; }
+    if (stageIdx === 2) { setDriverCoord(pickupCoord); return; }
+    if (stageIdx === 4) { setDriverCoord(dropoffCoord); return; }
+
+    // Stage 3: step through routeCoords, ~10s total
+    if (routeCoords.length < 2) { setDriverCoord(pickupCoord); return; }
+    let step = 0;
+    const intervalMs = Math.max(50, 10_000 / routeCoords.length);
+    const id = setInterval(() => {
+      step++;
+      if (step >= routeCoords.length) { clearInterval(id); return; }
+      setDriverCoord(routeCoords[step]);
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [stageIdx, routeCoords]);
 
   // Auto-advance simulation — local timers, no Supabase writes needed
   useEffect(() => {
