@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "simulator": {
+      "ios": {
+        "simulator": true,
+        "buildType": "simulator"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "buildType": "development"
+      }
+    },
+    "production": {
+      "ios": {
+        "buildType": "release"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "seleysteven2@gmail.com",
+        "ascAppId": "",
+        "appleTeamId": ""
+      }
+    }
+  }
+}
