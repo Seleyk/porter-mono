@@ -5,14 +5,7 @@
   "build": {
     "simulator": {
       "ios": {
-        "simulator": true,
-        "buildType": "simulator"
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "ios": {
-        "buildType": "development"
+        "simulator": true
       }
     },
     "android-preview": {
@@ -21,18 +14,7 @@
       }
     },
     "production": {
-      "ios": {
-        "buildType": "release"
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "seleysteven2@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
-      }
+      "distribution": "store"
     }
   }
 }
