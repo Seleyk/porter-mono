@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
+import MapboxGL from "@rnmapbox/maps";
+
+MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import {
   Manrope_300Light,

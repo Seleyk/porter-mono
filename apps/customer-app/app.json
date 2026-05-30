@@ -41,12 +41,7 @@
           "enableGooglePay": false
         }
       ],
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsDownloadToken": "sk.eyJ1Ijoic2VsZXkiLCJhIjoiY21wbnB4cjhkMnV0MzJyb3FuZDFiaHV3YSJ9.4sIh0AV08EW17-2cJMZECA"
-        }
-      ],
+      "@rnmapbox/maps",
 
       [
         "@react-native-google-signin/google-signin",
