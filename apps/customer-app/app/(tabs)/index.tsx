@@ -47,15 +47,22 @@ export default function HomeScreen() {
     : "?";
 
   const [mapExpanded, setMapExpanded] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const radar1 = useRef(new Animated.Value(0)).current;
+  const radar2 = useRef(new Animated.Value(0)).current;
+  const radar3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
-      ])
-    ).start();
+    const makeRadar = (anim: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      );
+    makeRadar(radar1, 0).start();
+    makeRadar(radar2, 700).start();
+    makeRadar(radar3, 1400).start();
   }, []);
 
   return (
@@ -167,12 +174,15 @@ export default function HomeScreen() {
               {FAKE_DRIVERS.map((d) => (
                 <MapboxGL.MarkerView key={d.id} coordinate={d.coords}>
                   <View style={styles.driverMarkerWrap}>
-                    <Animated.View
-                      style={[styles.driverPulse, {
-                        opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
-                        transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
-                      }]}
-                    />
+                    {[radar1, radar2, radar3].map((anim, i) => (
+                      <Animated.View
+                        key={i}
+                        style={[styles.radarRing, {
+                          opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.7, 0] }),
+                          transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 3.5] }) }],
+                        }]}
+                      />
+                    ))}
                     <View style={styles.driverBadge}>
                       <Text style={styles.driverInitials}>{d.id}</Text>
                     </View>
@@ -218,9 +228,9 @@ export default function HomeScreen() {
               <MapboxGL.MarkerView key={d.id} coordinate={d.coords}>
                 <View style={styles.driverMarkerWrap}>
                   <Animated.View
-                    style={[styles.driverPulse, {
-                      opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
-                      transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
+                    style={[styles.radarRing, {
+                      opacity: radar1.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+                      transform: [{ scale: radar1.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
                     }]}
                   />
                   <View style={styles.driverBadge}>
@@ -395,15 +405,17 @@ const styles = StyleSheet.create({
   driverMarkerWrap: {
     alignItems: "center",
     justifyContent: "center",
-    width: 36,
-    height: 36,
+    width: 100,
+    height: 100,
   },
-  driverPulse: {
+  radarRing: {
     position: "absolute",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.steel,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.steel,
+    backgroundColor: "transparent",
   },
   driverBadge: {
     width: 28,

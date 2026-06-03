@@ -42,11 +42,11 @@ export const Fonts = {
   bold: "Manrope_700Bold",
   extrabold: "Manrope_800ExtraBold",
 
-  // Cormorant Garamond — display serif
-  serif: "CormorantGaramond_400Regular",
-  serifItalic: "CormorantGaramond_400Regular_Italic",
-  serifMediumItalic: "CormorantGaramond_500Medium_Italic",
-  serifBold: "CormorantGaramond_700Bold",
+  // Display weights (Manrope — replaces Cormorant Garamond)
+  serif: "Manrope_700Bold",
+  serifItalic: "Manrope_600SemiBold",
+  serifMediumItalic: "Manrope_600SemiBold",
+  serifBold: "Manrope_800ExtraBold",
 };
 
 export const Radius = {

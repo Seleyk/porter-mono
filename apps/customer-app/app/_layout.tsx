@@ -16,13 +16,6 @@ import {
   Manrope_700Bold,
   Manrope_800ExtraBold,
 } from "@expo-google-fonts/manrope";
-import {
-  CormorantGaramond_400Regular,
-  CormorantGaramond_400Regular_Italic,
-  CormorantGaramond_500Medium_Italic,
-  CormorantGaramond_600SemiBold_Italic,
-  CormorantGaramond_700Bold,
-} from "@expo-google-fonts/cormorant-garamond";
 import { Colors } from "@/constants/theme";
 import { StripeProvider } from "@stripe/stripe-react-native";
 
@@ -65,11 +58,6 @@ export default function RootLayout() {
       Manrope_600SemiBold,
       Manrope_700Bold,
       Manrope_800ExtraBold,
-      CormorantGaramond_400Regular,
-      CormorantGaramond_400Regular_Italic,
-      CormorantGaramond_500Medium_Italic,
-      CormorantGaramond_600SemiBold_Italic,
-      CormorantGaramond_700Bold,
     }).then(() => setFontsLoaded(true));
   }, []);
 
@@ -88,30 +76,30 @@ export default function RootLayout() {
         <RouteGuard>
         <View style={{ flex: 1, backgroundColor: Colors.bgDeep }} onLayout={onLayoutRootView}>
           <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-            {/* Onboarding */}
-            <Stack.Screen name="index" />
-            <Stack.Screen name="welcome" />
-            <Stack.Screen name="auth" />
-            <Stack.Screen name="otp" />
-            <Stack.Screen name="permissions" />
-            <Stack.Screen name="setup-profile" />
+          <Stack screenOptions={{ headerShown: false, animation: "default" }}>
+            {/* Onboarding — fade for cinematic feel */}
+            <Stack.Screen name="index" options={{ animation: "fade" }} />
+            <Stack.Screen name="welcome" options={{ animation: "fade" }} />
+            <Stack.Screen name="auth" options={{ animation: "fade" }} />
+            <Stack.Screen name="otp" options={{ animation: "fade" }} />
+            <Stack.Screen name="permissions" options={{ animation: "fade" }} />
+            <Stack.Screen name="setup-profile" options={{ animation: "fade" }} />
             {/* Main app */}
-            <Stack.Screen name="(tabs)" />
-            {/* Booking flow */}
+            <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+            {/* Booking flow — slide via default */}
             <Stack.Screen name="where-to" options={{ animation: "slide_from_bottom" }} />
             <Stack.Screen name="select-type" />
             <Stack.Screen name="port-details" />
             <Stack.Screen name="dropoff-method" />
             <Stack.Screen name="delivery-method" />
-            <Stack.Screen name="finding-porter" />
+            <Stack.Screen name="finding-porter" options={{ animation: "fade_from_bottom" }} />
             <Stack.Screen name="tracking" />
             <Stack.Screen name="proof-of-delivery" />
-            <Stack.Screen name="complete" />
+            <Stack.Screen name="complete" options={{ animation: "fade_from_bottom" }} />
             {/* Porter Box */}
             <Stack.Screen name="porter-box-hub" />
             <Stack.Screen name="porter-box-pickup" />
-            <Stack.Screen name="porter-box-collected" />
+            <Stack.Screen name="porter-box-collected" options={{ animation: "fade_from_bottom" }} />
           </Stack>
         </View>
         </RouteGuard>
