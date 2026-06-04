@@ -44,7 +44,7 @@ export const PORTER_RATES = {
   PLATFORM_PCT:      0.35,   // 35% stays on platform
 
   // Box storage
-  BOX_STORAGE_RATE:  9.99,   // $ per day — storage only
+  BOX_STORAGE_RATE:  10.00,  // $ per hour — storage only
   BOX_STORAGE_PROFIT_PCT: 0.75, // 75% profit on storage (no driver)
   BOX_STORAGE_OPEX_PCT:   0.25, // 25% opex on storage
 
@@ -93,7 +93,7 @@ export interface FareRequest {
   luggageSize?:    LuggageSize; // Luggage modifier selection
 
   // Required for BOX_STORAGE only
-  storageDays?:    number;    // Number of days of storage requested
+  storageHours?:   number;    // Number of hours of storage requested
 
   // Optional overrides (for surge pricing, promos, etc.)
   surgeMultiplier?:  number;  // Override default surge (e.g. 0.15 for 15% surge)
@@ -235,11 +235,11 @@ export function calculateFare(req: FareRequest): FareResult {
 
   // ── BOX STORAGE (special path — no driver, flat rate) ──
   if (req.service === 'BOX_STORAGE') {
-    const days = req.storageDays ?? 1;
-    if (days <= 0) {
-      return { success: false, error: { code: 'INVALID_STORAGE_DAYS', message: 'Storage days must be at least 1.' } };
+    const hours = req.storageHours ?? 1;
+    if (hours <= 0) {
+      return { success: false, error: { code: 'INVALID_STORAGE_HOURS', message: 'Storage hours must be at least 1.' } };
     }
-    const totalFare = round2(PORTER_RATES.BOX_STORAGE_RATE * days);
+    const totalFare = round2(PORTER_RATES.BOX_STORAGE_RATE * hours);
     const stripe    = round2(computeStripe(totalFare));
     const opex      = round2(totalFare * PORTER_RATES.BOX_STORAGE_OPEX_PCT);
     const profit    = round2(totalFare * PORTER_RATES.BOX_STORAGE_PROFIT_PCT - stripe);
@@ -393,8 +393,8 @@ export function getReturnsFare(
 /**
  * getBoxStorageFare() — Quick wrapper for Porter Box storage
  */
-export function getBoxStorageFare(storageDays: number = 1): FareResult {
-  return calculateFare({ service: 'BOX_STORAGE', storageDays });
+export function getBoxStorageFare(storageHours: number = 1): FareResult {
+  return calculateFare({ service: 'BOX_STORAGE', storageHours });
 }
 
 /**

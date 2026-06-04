@@ -10,12 +10,12 @@ import { useBookingStore } from "@/store/bookingStore";
 export default function PorterBoxCollectedScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
-  const { porterBoxChargeCents, selectedBoxName, storageDays, reset } = useBookingStore();
+  const { porterBoxChargeCents, selectedBoxName, storageHours, reset } = useBookingStore();
 
   const firstName = profile?.first_name ?? "there";
-  const chargeAmount = porterBoxChargeCents ? porterBoxChargeCents / 100 : 9.99;
+  const chargeAmount = porterBoxChargeCents ? porterBoxChargeCents / 100 : 10.00;
   const total = chargeAmount;
-  const storageLabel = `Porter Box storage (${storageDays} day${storageDays !== 1 ? "s" : ""} × $9.99)`;
+  const storageLabel = `Porter Box storage (${storageHours} hr${storageHours !== 1 ? "s" : ""} × $10)`;
 
   const CHARGE = [
     { label: storageLabel, value: `$${chargeAmount.toFixed(2)}` },

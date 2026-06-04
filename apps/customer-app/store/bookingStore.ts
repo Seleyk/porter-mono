@@ -40,7 +40,7 @@ interface BookingState {
   calculatedFare: number | null;
 
   // Porter Box — storage duration selected by user
-  storageDays: number;
+  storageHours: number;
 
   // Created booking
   bookingId: string | null;
@@ -65,7 +65,7 @@ interface BookingState {
   setDeliverySpeed: (speed: DeliverySpeed) => void;
   setItemValueUSD: (v: number) => void;
   setCalculatedFare: (v: number) => void;
-  setStorageDays: (days: number) => void;
+  setStorageHours: (hours: number) => void;
   setBookingId: (id: string) => void;
   setAssignedDriver: (name: string, initials: string, rating: number) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
@@ -88,7 +88,7 @@ const initialState = {
   deliverySpeed: "priority" as DeliverySpeed,
   itemValueUSD: null,
   calculatedFare: null,
-  storageDays: 1,
+  storageHours: 1,
   bookingId: null,
   assignedDriverName: null,
   assignedDriverInitials: null,
@@ -113,7 +113,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setDeliverySpeed: (deliverySpeed) => set({ deliverySpeed }),
   setItemValueUSD: (itemValueUSD) => set({ itemValueUSD }),
   setCalculatedFare: (calculatedFare) => set({ calculatedFare }),
-  setStorageDays: (storageDays) => set({ storageDays }),
+  setStorageHours: (storageHours) => set({ storageHours }),
   setBookingId: (bookingId) => set({ bookingId }),
   setAssignedDriver: (assignedDriverName, assignedDriverInitials, assignedDriverRating) =>
     set({ assignedDriverName, assignedDriverInitials, assignedDriverRating }),

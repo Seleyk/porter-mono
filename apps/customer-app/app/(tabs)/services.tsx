@@ -1,9 +1,11 @@
+import { useState, useEffect } from "react";
 import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { fetchActivePorterBoxOrders, type PorterBoxOrder } from "@/services/porterBox";
 
 const FEATURES = [
   { icon: "shield-checkmark-outline", label: "Identity-verified porters" },
@@ -13,18 +15,46 @@ const FEATURES = [
 
 export default function ServicesScreen() {
   const insets = useSafeAreaInsets();
+  const [activeOrders, setActiveOrders] = useState<PorterBoxOrder[]>([]);
+
+  useEffect(() => {
+    fetchActivePorterBoxOrders().then(setActiveOrders);
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Services</Text>
+          <Text style={styles.eyebrow}>AT YOUR SERVICE</Text>
           <Text style={styles.heading}>
-            What would you{"\n"}
-            <Text style={styles.headingItalic}>like today?</Text>
+            Choose your{"\n"}
+            <Text style={styles.headingItalic}>occasion.</Text>
           </Text>
         </View>
+
+        {/* Active porter box orders */}
+        {activeOrders.map((order) => (
+          <Pressable
+            key={order.id}
+            style={({ pressed }) => [styles.activeOrderCard, { opacity: pressed ? 0.88 : 1 }]}
+            onPress={() => router.push("/porter-box-hub")}
+          >
+            <View style={styles.activeOrderTop}>
+              <View style={styles.activeOrderPill}>
+                <View style={styles.activeOrderDot} />
+                <Text style={styles.activeOrderPillText}>READY FOR PICKUP</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+            </View>
+            <Text style={styles.activeOrderName}>
+              Porter Box · {order.porter_hubs?.name ?? "Hub"}
+            </Text>
+            <Text style={styles.activeOrderCode}>
+              CODE · {(order.pickup_code ?? "----").split("").join(" ")}
+            </Text>
+          </Pressable>
+        ))}
 
         {/* Porter Signature card */}
         <Pressable
@@ -279,5 +309,47 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.regular,
     color: Colors.textMuted,
+  },
+  activeOrderCard: {
+    backgroundColor: "rgba(229,201,122,0.06)",
+    borderRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(229,201,122,0.3)",
+    padding: 18,
+    gap: 8,
+    marginBottom: 16,
+  },
+  activeOrderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activeOrderPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  activeOrderDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.gold,
+  },
+  activeOrderPillText: {
+    fontSize: 10,
+    fontFamily: Fonts.semibold,
+    color: Colors.gold,
+    letterSpacing: 2,
+  },
+  activeOrderName: {
+    fontSize: 17,
+    fontFamily: Fonts.semibold,
+    color: Colors.text,
+  },
+  activeOrderCode: {
+    fontSize: 12,
+    fontFamily: Fonts.medium,
+    color: Colors.textMuted,
+    letterSpacing: 1.5,
   },
 });

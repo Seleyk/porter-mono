@@ -33,7 +33,7 @@ export default function PorterBoxHubScreen() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [durationModalVisible, setDurationModalVisible] = useState(false);
   const [pendingHub, setPendingHub] = useState<PorterHub | null>(null);
-  const [days, setDays] = useState(store.storageDays);
+  const [hours, setHours] = useState(store.storageHours);
 
   useEffect(() => {
     supabase
@@ -48,11 +48,22 @@ export default function PorterBoxHubScreen() {
       .finally(() => setOrdersLoading(false));
   }, []);
 
-  async function handleDropOff(hub: PorterHub, storageDays: number) {
-    const fareResult = getBoxStorageFare(storageDays);
+  async function handleDropOff(hub: PorterHub, storageHours: number) {
+    const fareResult = getBoxStorageFare(storageHours);
     if (!fareResult.success) return;
     const amountCents = Math.round(fareResult.fare.totalFareUSD * 100);
-    store.setStorageDays(storageDays);
+    store.setStorageHours(storageHours);
+
+    // Demo hubs have non-UUID IDs — simulate the order locally
+    if (hub.id.startsWith("demo-")) {
+      const demoCode = String(Math.floor(1000 + Math.random() * 9000));
+      const demoOrderId = `demo-order-${Date.now()}`;
+      store.setPorterBoxOrder(demoOrderId, demoCode, amountCents);
+      store.setSelectedBox(hub.id, hub.name);
+      router.push("/porter-box-handoff");
+      return;
+    }
+
     setPaymentLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -97,7 +108,7 @@ export default function PorterBoxHubScreen() {
 
       store.setPorterBoxOrder(orderId, pickupCode, amountCents);
       store.setSelectedBox(hub.id, hub.name);
-      router.push("/porter-box-pickup");
+      router.push("/porter-box-handoff");
     } catch (e) {
       setPaymentLoading(false);
       Alert.alert("Error", e instanceof Error ? e.message : "Something went wrong");
@@ -205,7 +216,7 @@ export default function PorterBoxHubScreen() {
                   <Pressable
                     key={hub.id}
                     style={({ pressed }) => [styles.locationCard, { opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
-                    onPress={() => { if (!paymentLoading) { setPendingHub(hub); setDays(store.storageDays); setDurationModalVisible(true); } }}
+                    onPress={() => { if (!paymentLoading) { setPendingHub(hub); setHours(store.storageHours); setDurationModalVisible(true); } }}
                     disabled={paymentLoading}
                   >
                     <View style={styles.locationIconWrap}>
@@ -216,7 +227,7 @@ export default function PorterBoxHubScreen() {
                       <Text style={styles.locationAddr}>{hub.address}</Text>
                       <View style={styles.locationMeta}>
                         <Ionicons name="cube-outline" size={12} color={Colors.textDim} />
-                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $9.99/day</Text>
+                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $10/hr</Text>
                       </View>
                     </View>
                     {paymentLoading ? (
@@ -240,32 +251,32 @@ export default function PorterBoxHubScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
-              <Text style={styles.modalTitle}>How many days?</Text>
-              <Text style={styles.modalSub}>$9.99 / day · pick up anytime, no rush</Text>
+              <Text style={styles.modalTitle}>How many hours?</Text>
+              <Text style={styles.modalSub}>$10 / hr · pick up anytime</Text>
 
               <View style={styles.stepperRow}>
                 <Pressable
                   style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
-                  onPress={() => setDays((d) => Math.max(1, d - 1))}
+                  onPress={() => setHours((h) => Math.max(1, h - 1))}
                 >
                   <Ionicons name="remove" size={20} color={Colors.text} />
                 </Pressable>
-                <Text style={styles.stepperValue}>{days}</Text>
+                <Text style={styles.stepperValue}>{hours}</Text>
                 <Pressable
                   style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
-                  onPress={() => setDays((d) => Math.min(30, d + 1))}
+                  onPress={() => setHours((h) => Math.min(24, h + 1))}
                 >
                   <Ionicons name="add" size={20} color={Colors.text} />
                 </Pressable>
               </View>
 
-              <Text style={styles.modalPrice}>${(9.99 * days).toFixed(2)}</Text>
+              <Text style={styles.modalPrice}>${(10 * hours).toFixed(2)}</Text>
 
               <Pressable
                 style={({ pressed }) => [styles.modalCta, { opacity: pressed ? 0.85 : 1 }]}
                 onPress={() => {
                   setDurationModalVisible(false);
-                  if (pendingHub) handleDropOff(pendingHub, days);
+                  if (pendingHub) handleDropOff(pendingHub, hours);
                 }}
               >
                 <Text style={styles.modalCtaText}>Continue to Payment</Text>

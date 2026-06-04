@@ -5,21 +5,18 @@ export type DemoDriver = {
   rating: number;
   coords: { lng: number; lat: number };
   available: boolean;
+  vehicle: string;
+  plate: string;
 };
 
 export const DEMO_USER_COORDS = { lng: -80.1340, lat: 25.7823 }; // South Beach, Miami
 
 export const DEMO_DRIVERS: DemoDriver[] = [
-  // South Beach — Ocean Drive area
-  { id: "d1", initials: "JR", name: "James R.", rating: 4.98, coords: { lng: -80.1301, lat: 25.7798 }, available: true },
-  // Goodtime Hotel — 601 Washington Ave, Miami Beach
-  { id: "d2", initials: "MA", name: "Marcus A.", rating: 4.95, coords: { lng: -80.1362, lat: 25.7752 }, available: true },
-  // Collins Ave mid-beach
-  { id: "d3", initials: "EH", name: "Elena H.", rating: 4.99, coords: { lng: -80.1298, lat: 25.7880 }, available: true },
-  // Tribute Hotel — Collins Ave / South Beach
-  { id: "d4", initials: "TK", name: "Theo K.", rating: 4.96, coords: { lng: -80.1290, lat: 25.7760 }, available: true },
-  // Brickell — backup driver
-  { id: "d5", initials: "LO", name: "Lena O.", rating: 4.97, coords: { lng: -80.1944, lat: 25.7657 }, available: false },
+  { id: "d1", initials: "JR", name: "James R.", rating: 4.98, coords: { lng: -80.1301, lat: 25.7798 }, available: true, vehicle: "Black Tesla Model Y", plate: "SBE 112" },
+  { id: "d2", initials: "MA", name: "Marcus A.", rating: 4.95, coords: { lng: -80.1362, lat: 25.7752 }, available: true, vehicle: "Red Toyota RAV4", plate: "MLX 004" },
+  { id: "d3", initials: "EH", name: "Elena H.", rating: 4.99, coords: { lng: -80.1298, lat: 25.7880 }, available: true, vehicle: "White Mercedes GLC", plate: "MIA 337" },
+  { id: "d4", initials: "TK", name: "Theo K.", rating: 4.96, coords: { lng: -80.1290, lat: 25.7760 }, available: true, vehicle: "Silver BMW X5", plate: "FLA 891" },
+  { id: "d5", initials: "LO", name: "Lena O.", rating: 4.97, coords: { lng: -80.1944, lat: 25.7657 }, available: false, vehicle: "Gray Honda CR-V", plate: "BKL 509" },
 ];
 
 export const DEMO_HUBS = [

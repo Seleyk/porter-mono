@@ -98,6 +98,7 @@ export default function RootLayout() {
             <Stack.Screen name="complete" options={{ animation: "fade_from_bottom" }} />
             {/* Porter Box */}
             <Stack.Screen name="porter-box-hub" />
+            <Stack.Screen name="porter-box-handoff" />
             <Stack.Screen name="porter-box-pickup" />
             <Stack.Screen name="porter-box-collected" options={{ animation: "fade_from_bottom" }} />
           </Stack>

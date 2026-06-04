@@ -57,27 +57,16 @@ export default function WhereToScreen() {
     }
   };
 
-  // Tap a static favorite/recent — immediately geocodes and sets coords in one step
-  const handleSelectFavorite = useCallback(async (label: string) => {
+  // Tap a static favorite/recent — use known coords directly, skip geocoding
+  const handleSelectFavorite = useCallback((label: string, knownCoords: LatLng) => {
     const targetField: "pickup" | "dropoff" = localPickup.trim().length === 0 ? "pickup" : "dropoff";
-    if (targetField === "pickup") { setLocalPickup(label); setPickupCoords(null); setActiveField("pickup"); }
-    else { setLocalDropoff(label); setDropoffCoords(null); setActiveField("dropoff"); }
     setSuggestions([]);
-
-    setIsSearching(true);
-    const results = await searchPlaces(label);
-    setIsSearching(false);
-
-    if (results.length > 0) {
-      const f = results[0];
-      const coords: LatLng = { lat: f.center[1], lng: f.center[0] };
-      if (targetField === "pickup") {
-        setLocalPickup(f.place_name); setPickupCoords(coords);
-        dropoffRef.current?.focus(); setActiveField("dropoff");
-      } else {
-        setLocalDropoff(f.place_name); setDropoffCoords(coords);
-        setActiveField(null);
-      }
+    if (targetField === "pickup") {
+      setLocalPickup(label); setPickupCoords(knownCoords);
+      dropoffRef.current?.focus(); setActiveField("dropoff");
+    } else {
+      setLocalDropoff(label); setDropoffCoords(knownCoords);
+      setActiveField(null);
     }
   }, [localPickup]);
 
@@ -201,14 +190,14 @@ export default function WhereToScreen() {
               <>
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>FAVORITES</Text>
-                  {FAVORITES.map((f) => (
+                  {DEMO_FAVORITES.map((f) => (
                     <Pressable
                       key={f.label}
                       style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-                      onPress={() => handleSelectFavorite(f.label)}
+                      onPress={() => handleSelectFavorite(f.label, f.coords)}
                     >
                       <View style={styles.listIconBox}>
-                        <Ionicons name={f.icon} size={16} color={Colors.steel} />
+                        <Ionicons name={f.icon as any} size={16} color={Colors.steel} />
                       </View>
                       <View style={styles.listText}>
                         <Text style={styles.listTitle}>{f.label}</Text>
@@ -220,11 +209,11 @@ export default function WhereToScreen() {
 
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>RECENT</Text>
-                  {RECENTS.map((r) => (
+                  {DEMO_RECENTS.map((r) => (
                     <Pressable
                       key={r.label}
                       style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-                      onPress={() => handleSelectFavorite(r.label)}
+                      onPress={() => handleSelectFavorite(r.label, r.coords)}
                     >
                       <View style={styles.listIconBox}>
                         <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
