@@ -45,6 +45,11 @@ interface BookingState {
   // Created booking
   bookingId: string | null;
 
+  // Assigned driver (simulation)
+  assignedDriverName: string | null;
+  assignedDriverInitials: string | null;
+  assignedDriverRating: number | null;
+
   // Porter Box order
   porterBoxOrderId: string | null;
   porterBoxCode: string | null;
@@ -62,6 +67,7 @@ interface BookingState {
   setCalculatedFare: (v: number) => void;
   setStorageDays: (days: number) => void;
   setBookingId: (id: string) => void;
+  setAssignedDriver: (name: string, initials: string, rating: number) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
   reset: () => void;
 }
@@ -84,6 +90,9 @@ const initialState = {
   calculatedFare: null,
   storageDays: 1,
   bookingId: null,
+  assignedDriverName: null,
+  assignedDriverInitials: null,
+  assignedDriverRating: null,
   porterBoxOrderId: null,
   porterBoxCode: null,
   porterBoxChargeCents: null,
@@ -106,6 +115,8 @@ export const useBookingStore = create<BookingState>((set) => ({
   setCalculatedFare: (calculatedFare) => set({ calculatedFare }),
   setStorageDays: (storageDays) => set({ storageDays }),
   setBookingId: (bookingId) => set({ bookingId }),
+  setAssignedDriver: (assignedDriverName, assignedDriverInitials, assignedDriverRating) =>
+    set({ assignedDriverName, assignedDriverInitials, assignedDriverRating }),
   setPorterBoxOrder: (porterBoxOrderId, porterBoxCode, porterBoxChargeCents) =>
     set({ porterBoxOrderId, porterBoxCode, porterBoxChargeCents }),
   reset: () => set(initialState),

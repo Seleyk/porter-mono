@@ -8,6 +8,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { supabase } from "@/lib/supabase";
 import { PorterHub } from "@/lib/database.types";
+import { DEMO_HUBS } from "@/constants/simulation";
 import { useBookingStore } from "@/store/bookingStore";
 import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
 import { getBoxStorageFare } from "@/services/porterFare";
@@ -39,7 +40,7 @@ export default function PorterBoxHubScreen() {
       .from("porter_hubs")
       .select("*")
       .eq("is_active", true)
-      .then(({ data }) => setHubs(data ?? []))
+      .then(({ data }) => setHubs(data && data.length > 0 ? data : DEMO_HUBS as unknown as PorterHub[]))
       .finally(() => setHubsLoading(false));
 
     fetchActivePorterBoxOrders()

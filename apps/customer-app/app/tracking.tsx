@@ -8,6 +8,7 @@ import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useBookingStore } from "@/store/bookingStore";
 import { subscribeToBooking } from "@/services/booking";
+import { DEMO_USER_COORDS } from "@/constants/simulation";
 import { fetchRoute } from "@/services/directions";
 import { ServiceRequest } from "@/lib/database.types";
 
@@ -29,15 +30,16 @@ const STATUS_TO_STAGE: Record<string, number> = {
 
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
-  const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords } = useBookingStore();
+  const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords,
+    assignedDriverName, assignedDriverInitials, assignedDriverRating } = useBookingStore();
   const [stageIdx, setStageIdx] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const completedRef = useRef(false);
 
-  const pickupLng = pickupCoords?.lng ?? -73.9967;
-  const pickupLat = pickupCoords?.lat ?? 40.7484;
-  const dropoffLng = dropoffCoords?.lng ?? -73.9950;
-  const dropoffLat = dropoffCoords?.lat ?? 40.7467;
+  const pickupLng = pickupCoords?.lng ?? DEMO_USER_COORDS.lng;
+  const pickupLat = pickupCoords?.lat ?? DEMO_USER_COORDS.lat;
+  const dropoffLng = dropoffCoords?.lng ?? (DEMO_USER_COORDS.lng + 0.012);
+  const dropoffLat = dropoffCoords?.lat ?? (DEMO_USER_COORDS.lat - 0.008);
   const pickupCoord: [number, number] = [pickupLng, pickupLat];
   const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
 
@@ -221,19 +223,32 @@ export default function TrackingScreen() {
                   </Text>
                 </Text>
               </View>
+              {stageIdx < 4 && (
+                <Pressable
+                  style={({ pressed }) => [styles.skipBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  onPress={() => setStageIdx((s) => Math.min(s + 1, 4))}
+                >
+                  <Text style={styles.skipText}>Skip</Text>
+                  <Ionicons name="chevron-forward" size={12} color={Colors.steel} />
+                </Pressable>
+              )}
             </View>
           </View>
 
           {/* Porter card */}
           <View style={styles.porterCard}>
             <View style={styles.porterAvatar}>
-              <Text style={styles.porterAvatarText}>P</Text>
+              <Text style={styles.porterAvatarText}>
+                {assignedDriverInitials ?? "P"}
+              </Text>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.porterName}>Your Porter</Text>
+              <Text style={styles.porterName}>{assignedDriverName ?? "Your Porter"}</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={13} color={Colors.gold} />
-                <Text style={styles.ratingText}>4.98 · Identity verified</Text>
+                <Text style={styles.ratingText}>
+                  {assignedDriverRating?.toFixed(2) ?? "4.98"} · Identity verified
+                </Text>
               </View>
             </View>
             <View style={styles.porterActions}>
@@ -484,6 +499,23 @@ const styles = StyleSheet.create({
   },
   statusEtaNum: {
     fontFamily: Fonts.semibold,
+    color: Colors.steel,
+  },
+  skipBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    backgroundColor: "rgba(111,163,200,0.08)",
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.2)",
+    flexShrink: 0,
+  },
+  skipText: {
+    fontSize: 12,
+    fontFamily: Fonts.medium,
     color: Colors.steel,
   },
   porterCard: {

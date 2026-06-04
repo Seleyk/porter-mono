@@ -10,26 +10,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useBookingStore, type LatLng } from "@/store/bookingStore";
 import { searchPlaces, type MapboxFeature } from "@/services/geocoding";
-
-const FAVORITES = [
-  { icon: "home-outline" as const, label: "240 Park Hill Ave", sub: "Home · New York, NY" },
-  { icon: "briefcase-outline" as const, label: "10 W 13th St", sub: "Work · New York, NY" },
-  { icon: "star-outline" as const, label: "The Carlyle Hotel", sub: "Favorite · 35 E 76th St" },
-];
-
-const RECENTS = [
-  { label: "Saks Fifth Avenue", sub: "611 Fifth Ave" },
-  { label: "The Museum of Modern Art", sub: "11 W 53rd St" },
-  { label: "553 W 161st St", sub: "New York, NY" },
-];
+import { DEMO_FAVORITES, DEMO_RECENTS } from "@/constants/simulation";
 
 export default function WhereToScreen() {
   const insets = useSafeAreaInsets();
-  const { pickup, dropoff, setRoute } = useBookingStore();
+  const { pickup, dropoff, pickupCoords: storePickupCoords, dropoffCoords: storeDropoffCoords, setRoute } = useBookingStore();
   const [localPickup, setLocalPickup] = useState(pickup);
   const [localDropoff, setLocalDropoff] = useState(dropoff);
-  const [pickupCoords, setPickupCoords] = useState<LatLng | null>(null);
-  const [dropoffCoords, setDropoffCoords] = useState<LatLng | null>(null);
+  const [pickupCoords, setPickupCoords] = useState<LatLng | null>(storePickupCoords);
+  const [dropoffCoords, setDropoffCoords] = useState<LatLng | null>(storeDropoffCoords);
   const [activeField, setActiveField] = useState<"pickup" | "dropoff" | null>(null);
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
   const [isSearching, setIsSearching] = useState(false);

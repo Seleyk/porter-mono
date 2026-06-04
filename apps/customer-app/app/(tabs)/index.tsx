@@ -6,6 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import MapboxGL from "@rnmapbox/maps";
+import { DEMO_USER_COORDS, DEMO_DRIVERS, DEMO_FAVORITES, DEMO_RECENTS, DEMO_CURRENT_LOCATION } from "@/constants/simulation";
+import { useBookingStore } from "@/store/bookingStore";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -14,37 +16,34 @@ function getGreeting() {
   return "GOOD EVENING";
 }
 
-const FAVORITES = [
-  { icon: "home-outline", label: "240 Park Hill Ave", sub: "Home · New York, NY", iconColor: Colors.primaryLight },
-  { icon: "briefcase-outline", label: "10 W 13th St", sub: "Work · New York, NY", iconColor: Colors.primaryLight },
-  { icon: "star", label: "The Carlyle", sub: "Favorite · 35 E 76th St", iconColor: "#D4A843" },
-];
 
-const RECENT = [
-  { label: "Saks Fifth Avenue", sub: "611 Fifth Ave · 10 min ago" },
-  { label: "The Museum of Modern Art", sub: "11 W 53rd St · 4 days ago" },
-  { label: "553 W 161st St", sub: "New York, NY · last week" },
-];
+const MIAMI_CENTER: [number, number] = [DEMO_USER_COORDS.lng, DEMO_USER_COORDS.lat];
 
-const NYC_CENTER: [number, number] = [-73.9967, 40.7484];
-
-const FAKE_DRIVERS = [
-  { id: "JR", coords: [-73.9940, 40.7501] as [number, number] },
-  { id: "MA", coords: [-73.9995, 40.7512] as [number, number] },
-  { id: "EH", coords: [-73.9930, 40.7469] as [number, number] },
-  { id: "TK", coords: [-73.9978, 40.7460] as [number, number] },
-  { id: "LO", coords: [-73.9950, 40.7490] as [number, number] },
-];
+const FAKE_DRIVERS = DEMO_DRIVERS.map((d) => ({
+  id: d.initials,
+  coords: [d.coords.lng, d.coords.lat] as [number, number],
+}));
 
 const MAP_H = 200;
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
+  const { pickup, setRoute } = useBookingStore();
   const firstName = profile?.first_name ?? "there";
   const initials = profile
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
     : "?";
+
+  function handleLocationTap(label: string, coords: { lng: number; lat: number }) {
+    setRoute(DEMO_CURRENT_LOCATION.label, label, DEMO_CURRENT_LOCATION.coords, coords);
+    router.push("/where-to");
+  }
+
+  function handleSearchBarTap() {
+    if (!pickup) setRoute(DEMO_CURRENT_LOCATION.label, "", DEMO_CURRENT_LOCATION.coords, null);
+    router.push("/where-to");
+  }
 
   const [mapExpanded, setMapExpanded] = useState(false);
   const radar1 = useRef(new Animated.Value(0)).current;
@@ -85,7 +84,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Search bar */}
-        <Pressable style={styles.searchBar} onPress={() => router.push("/where-to")}>
+        <Pressable style={styles.searchBar} onPress={handleSearchBarTap}>
           <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
           <Text style={styles.searchPlaceholder}>Where to?</Text>
           <View style={styles.nowPill}>
@@ -102,10 +101,11 @@ export default function HomeScreen() {
               <Text style={styles.sectionAction}>Edit</Text>
             </Pressable>
           </View>
-          {FAVORITES.map((f) => (
+          {DEMO_FAVORITES.map((f) => (
             <Pressable
               key={f.label}
               style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => handleLocationTap(f.label, f.coords)}
             >
               <View style={styles.listIconBox}>
                 <Ionicons name={f.icon as any} size={18} color={f.iconColor} />
@@ -124,10 +124,11 @@ export default function HomeScreen() {
           <View style={styles.sectionRow}>
             <Text style={styles.sectionLabel}>FREQUENT DESTINATIONS</Text>
           </View>
-          {RECENT.map((r) => (
+          {DEMO_RECENTS.map((r) => (
             <Pressable
               key={r.label}
               style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => handleLocationTap(r.label, r.coords)}
             >
               <View style={styles.listIconBox}>
                 <Ionicons name="time-outline" size={18} color={Colors.textSecondary} />
@@ -161,12 +162,12 @@ export default function HomeScreen() {
             >
               <MapboxGL.Camera
                 zoomLevel={14.5}
-                centerCoordinate={NYC_CENTER}
+                centerCoordinate={MIAMI_CENTER}
                 animationDuration={0}
               />
 
               {/* User dot */}
-              <MapboxGL.MarkerView coordinate={NYC_CENTER}>
+              <MapboxGL.MarkerView coordinate={MIAMI_CENTER}>
                 <View style={styles.userDot} />
               </MapboxGL.MarkerView>
 
@@ -218,10 +219,10 @@ export default function HomeScreen() {
           >
             <MapboxGL.Camera
               zoomLevel={14.5}
-              centerCoordinate={NYC_CENTER}
+              centerCoordinate={MIAMI_CENTER}
               animationDuration={0}
             />
-            <MapboxGL.MarkerView coordinate={NYC_CENTER}>
+            <MapboxGL.MarkerView coordinate={MIAMI_CENTER}>
               <View style={styles.userDot} />
             </MapboxGL.MarkerView>
             {FAKE_DRIVERS.map((d) => (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { StyleSheet, Text, View, Pressable, ImageBackground, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,24 +13,28 @@ const TYPES = [
     icon: "briefcase-outline" as const,
     label: "Luggage",
     desc: "Suitcases, trunks, oversized bags",
+    image: require("@/assets/luggage.jpeg"),
   },
   {
     id: "shopping",
     icon: "bag-handle-outline" as const,
     label: "Shopping",
     desc: "Retail bags, boutique parcels, groceries",
+    image: require("@/assets/shopping.jpeg"),
   },
   {
     id: "parcels",
     icon: "cube-outline" as const,
     label: "Parcels",
     desc: "Boxes, packages, courier items",
+    image: require("@/assets/Parcels.jpeg"),
   },
   {
     id: "other",
     icon: "ellipsis-horizontal-outline" as const,
     label: "Other",
     desc: "Flowers, documents, fragile items",
+    image: require("@/assets/other.jpeg"),
   },
 ];
 
@@ -61,7 +65,10 @@ export default function SelectTypeScreen() {
         </Text>
 
         {/* Type cards */}
-        <View style={styles.cards}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.cards}
+        >
           {TYPES.map((t) => {
             const active = selected === t.id;
             return (
@@ -70,26 +77,40 @@ export default function SelectTypeScreen() {
                 style={({ pressed }) => [
                   styles.card,
                   active && styles.cardActive,
-                  { opacity: pressed ? 0.85 : 1 },
+                  { opacity: pressed ? 0.88 : 1 },
                 ]}
                 onPress={() => setSelected(t.id as ItemType)}
               >
-                <View style={[styles.iconBox, active && styles.iconBoxActive]}>
-                  <Ionicons name={t.icon} size={22} color={active ? Colors.steel : Colors.textMuted} />
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={[styles.cardLabel, active && styles.cardLabelActive]}>{t.label}</Text>
-                  <Text style={styles.cardDesc}>{t.desc}</Text>
-                </View>
-                <View style={[styles.radio, active && styles.radioActive]}>
-                  {active && <View style={styles.radioDot} />}
-                </View>
+                <ImageBackground
+                  source={t.image}
+                  style={styles.cardBg}
+                  resizeMode="cover"
+                >
+                  <LinearGradient
+                    colors={["rgba(10,31,58,0.55)", "rgba(5,11,22,0.88)"]}
+                    style={styles.cardGradient}
+                  >
+                    {/* Top row: icon + radio */}
+                    <View style={styles.cardTop}>
+                      <View style={[styles.iconBox, active && styles.iconBoxActive]}>
+                        <Ionicons name={t.icon} size={22} color={active ? Colors.steel : Colors.textMuted} />
+                      </View>
+                      <View style={[styles.radio, active && styles.radioActive]}>
+                        {active && <View style={styles.radioDot} />}
+                      </View>
+                    </View>
+
+                    {/* Bottom: label + desc */}
+                    <View style={styles.cardBody}>
+                      <Text style={[styles.cardLabel, active && styles.cardLabelActive]}>{t.label}</Text>
+                      <Text style={styles.cardDesc}>{t.desc}</Text>
+                    </View>
+                  </LinearGradient>
+                </ImageBackground>
               </Pressable>
             );
           })}
-        </View>
-
-        <View style={{ flex: 1 }} />
+        </ScrollView>
 
         <Pressable
           style={({ pressed }) => [styles.cta, { opacity: selected ? pressed ? 0.85 : 1 : 0.4 }]}
@@ -145,7 +166,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     lineHeight: 42,
     letterSpacing: -0.3,
-    marginBottom: 28,
+    marginBottom: 20,
   },
   headingItalic: {
     fontFamily: Fonts.serifItalic,
@@ -153,44 +174,53 @@ const styles = StyleSheet.create({
   },
   cards: {
     gap: 12,
+    paddingBottom: 16,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    height: 190,
     borderRadius: Radius.xl,
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.1)",
-    padding: 16,
+    overflow: "hidden",
   },
   cardActive: {
-    backgroundColor: "rgba(111,163,200,0.08)",
-    borderColor: "rgba(111,163,200,0.4)",
+    borderColor: "rgba(111,163,200,0.5)",
+    borderWidth: 1.5,
+  },
+  cardBg: {
+    flex: 1,
+  },
+  cardGradient: {
+    flex: 1,
+    padding: 16,
+    justifyContent: "space-between",
+  },
+  cardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   iconBox: {
     width: 46,
     height: 46,
     borderRadius: Radius.md,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
   iconBoxActive: {
-    backgroundColor: "rgba(111,163,200,0.12)",
-    borderColor: "rgba(111,163,200,0.3)",
+    backgroundColor: "rgba(111,163,200,0.18)",
+    borderColor: "rgba(111,163,200,0.4)",
   },
   cardBody: {
-    flex: 1,
-    gap: 3,
+    gap: 4,
   },
   cardLabel: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: Fonts.semibold,
-    color: Colors.textMuted,
+    color: "rgba(255,255,255,0.7)",
   },
   cardLabelActive: {
     color: "#fff",
@@ -198,7 +228,7 @@ const styles = StyleSheet.create({
   cardDesc: {
     fontSize: 12,
     fontFamily: Fonts.regular,
-    color: Colors.textDim,
+    color: "rgba(255,255,255,0.5)",
     lineHeight: 17,
   },
   radio: {
@@ -206,10 +236,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: Radius.full,
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.3)",
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
   radioActive: {
     borderColor: Colors.steel,
@@ -230,7 +260,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 0.5,
     borderColor: "rgba(111,163,200,0.4)",
-    marginTop: 16,
+    marginTop: 12,
   },
   ctaText: {
     fontSize: 16,

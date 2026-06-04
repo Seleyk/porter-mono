@@ -8,6 +8,7 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { createBooking } from "@/services/booking";
+import { closestAvailableDriver, DEMO_USER_COORDS } from "@/constants/simulation";
 
 const STEPS = [
   "Verifying porter credentials…",
@@ -52,6 +53,9 @@ export default function FindingPorterScreen() {
   useEffect(() => {
     if (progress >= 100 && !bookingCreated.current && user && store.itemType) {
       bookingCreated.current = true;
+      const driverRef = store.pickupCoords ?? DEMO_USER_COORDS;
+      const driver = closestAvailableDriver(driverRef);
+      store.setAssignedDriver(driver.name, driver.initials, driver.rating);
       createBooking({
         customerId: user.id,
         pickup: store.pickup,
