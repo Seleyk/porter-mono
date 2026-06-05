@@ -10,7 +10,7 @@ import { useColors } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { PorterHub } from "@/lib/database.types";
 import { DEMO_HUBS } from "@/constants/simulation";
-import { useBookingStore } from "@/store/bookingStore";
+import { useBookingStore, type LocalPorterBoxSession } from "@/store/bookingStore";
 import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
 import { getBoxStorageFare } from "@/services/porterFare";
 
@@ -25,6 +25,9 @@ export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, bgGradient } = useColors();
   const store = useBookingStore();
+  const localSessions = useBookingStore((s) => s.localPorterBoxSessions);
+  const addPorterBoxSession = useBookingStore((s) => s.addPorterBoxSession);
+  const removePorterBoxSession = useBookingStore((s) => s.removePorterBoxSession);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [tab, setTab] = useState<"pickup" | "dropoff">("pickup");
@@ -62,6 +65,14 @@ export default function PorterBoxHubScreen() {
       const demoOrderId = `demo-order-${Date.now()}`;
       store.setPorterBoxOrder(demoOrderId, demoCode, amountCents);
       store.setSelectedBox(hub.id, hub.name);
+      addPorterBoxSession({
+        id: demoOrderId,
+        hubId: hub.id,
+        hubName: hub.name,
+        pickupCode: demoCode,
+        chargeCents: amountCents,
+        droppedAt: new Date().toISOString(),
+      });
       router.push("/porter-box-stored");
       return;
     }
@@ -123,6 +134,12 @@ export default function PorterBoxHubScreen() {
     router.push("/porter-box-pickup");
   }
 
+  function handleViewLocalPickup(session: LocalPorterBoxSession) {
+    store.setPorterBoxOrder(session.id, session.pickupCode, session.chargeCents);
+    store.setSelectedBox(session.hubId, session.hubName);
+    router.push("/porter-box-pickup");
+  }
+
   return (
     <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
@@ -159,7 +176,7 @@ export default function PorterBoxHubScreen() {
             <>
               {ordersLoading ? (
                 <ActivityIndicator color={Colors.steel} style={{ marginTop: 24 }} />
-              ) : activeOrders.length === 0 ? (
+              ) : activeOrders.length === 0 && localSessions.length === 0 ? (
                 <View style={styles.emptyOrders}>
                   <Ionicons name="cube-outline" size={32} color={colors.textDim} />
                   <Text style={[styles.emptyOrdersTitle, { color: colors.text }]}>No active storage</Text>
@@ -168,28 +185,52 @@ export default function PorterBoxHubScreen() {
                   </Text>
                 </View>
               ) : (
-                activeOrders.map((order) => (
-                  <View key={order.id} style={styles.activeCard}>
-                    <View style={styles.activeCardHeader}>
-                      <View style={styles.activePill}>
-                        <View style={styles.activeDot} />
-                        <Text style={styles.activePillText}>Ready for pickup</Text>
+                <>
+                  {localSessions.map((session) => (
+                    <View key={session.id} style={styles.activeCard}>
+                      <View style={styles.activeCardHeader}>
+                        <View style={styles.activePill}>
+                          <View style={styles.activeDot} />
+                          <Text style={styles.activePillText}>Ready for pickup</Text>
+                        </View>
+                        <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(session.droppedAt)}</Text>
                       </View>
-                      <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(order.dropped_at)}</Text>
+                      <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
+                      <Text style={[styles.activeSub, { color: colors.textMuted }]}>
+                        {session.hubName}
+                      </Text>
+                      <Pressable
+                        style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
+                        onPress={() => handleViewLocalPickup(session)}
+                      >
+                        <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#fff" />
+                      </Pressable>
                     </View>
-                    <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
-                    <Text style={[styles.activeSub, { color: colors.textMuted }]}>
-                      Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
-                    </Text>
-                    <Pressable
-                      style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
-                      onPress={() => handleViewPickup(order)}
-                    >
-                      <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#fff" />
-                    </Pressable>
-                  </View>
-                ))
+                  ))}
+                  {activeOrders.map((order) => (
+                    <View key={order.id} style={styles.activeCard}>
+                      <View style={styles.activeCardHeader}>
+                        <View style={styles.activePill}>
+                          <View style={styles.activeDot} />
+                          <Text style={styles.activePillText}>Ready for pickup</Text>
+                        </View>
+                        <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(order.dropped_at)}</Text>
+                      </View>
+                      <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
+                      <Text style={[styles.activeSub, { color: colors.textMuted }]}>
+                        Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
+                      </Text>
+                      <Pressable
+                        style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
+                        onPress={() => handleViewPickup(order)}
+                      >
+                        <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </>
               )}
 
               {/* How to collect */}

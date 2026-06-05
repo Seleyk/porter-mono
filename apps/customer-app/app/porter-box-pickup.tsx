@@ -17,7 +17,7 @@ const STEPS = [
 export default function PorterBoxPickupScreen() {
   const insets = useSafeAreaInsets();
   const { colors, bgGradient } = useColors();
-  const { porterBoxOrderId, porterBoxCode, porterBoxChargeCents, selectedBoxName } = useBookingStore();
+  const { porterBoxOrderId, porterBoxCode, porterBoxChargeCents, selectedBoxName, removePorterBoxSession } = useBookingStore();
 
   const displayCode = porterBoxCode
     ? porterBoxCode.split("").join(" ")
@@ -28,7 +28,9 @@ export default function PorterBoxPickupScreen() {
     : "$9.99";
 
   async function handleCollected() {
-    if (porterBoxOrderId) {
+    if (porterBoxOrderId?.startsWith("demo-order-")) {
+      removePorterBoxSession(porterBoxOrderId);
+    } else if (porterBoxOrderId) {
       const { error } = await markOrderCollected(porterBoxOrderId);
       if (error) {
         Alert.alert("Error", "Could not mark order as collected. Please try again.");

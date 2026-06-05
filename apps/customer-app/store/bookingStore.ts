@@ -5,6 +5,15 @@ export type DropoffMethod = "door" | "box";
 export type DeliverySpeed = "priority" | "standard" | "scheduled";
 export interface LatLng { lat: number; lng: number; }
 
+export interface LocalPorterBoxSession {
+  id: string;
+  hubId: string;
+  hubName: string;
+  pickupCode: string;
+  chargeCents: number;
+  droppedAt: string;
+}
+
 interface ItemCounts {
   large: number;
   standard: number;
@@ -70,6 +79,9 @@ interface BookingState {
   setAssignedDriver: (name: string, initials: string, rating: number) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
   setPorterBoxCode: (code: string) => void;
+  localPorterBoxSessions: LocalPorterBoxSession[];
+  addPorterBoxSession: (session: LocalPorterBoxSession) => void;
+  removePorterBoxSession: (id: string) => void;
   reset: () => void;
 }
 
@@ -101,6 +113,7 @@ const initialState = {
 
 export const useBookingStore = create<BookingState>((set) => ({
   ...initialState,
+  localPorterBoxSessions: [],
 
   setRoute: (pickup, dropoff, pickupCoords = null, dropoffCoords = null) =>
     set({ pickup, dropoff, pickupCoords, dropoffCoords }),
@@ -121,7 +134,11 @@ export const useBookingStore = create<BookingState>((set) => ({
   setPorterBoxOrder: (porterBoxOrderId, porterBoxCode, porterBoxChargeCents) =>
     set({ porterBoxOrderId, porterBoxCode, porterBoxChargeCents }),
   setPorterBoxCode: (porterBoxCode) => set({ porterBoxCode }),
-  reset: () => set(initialState),
+  addPorterBoxSession: (session) =>
+    set((state) => ({ localPorterBoxSessions: [...state.localPorterBoxSessions, session] })),
+  removePorterBoxSession: (id) =>
+    set((state) => ({ localPorterBoxSessions: state.localPorterBoxSessions.filter((s) => s.id !== id) })),
+  reset: () => set((state) => ({ ...initialState, localPorterBoxSessions: state.localPorterBoxSessions })),
 }));
 
 // Derived helpers
