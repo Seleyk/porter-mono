@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { markOrderCollected } from "@/services/porterBox";
 
@@ -15,6 +16,7 @@ const STEPS = [
 
 export default function PorterBoxPickupScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { porterBoxOrderId, porterBoxCode, porterBoxChargeCents, selectedBoxName } = useBookingStore();
 
   const displayCode = porterBoxCode
@@ -37,7 +39,7 @@ export default function PorterBoxPickupScreen() {
   }
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
@@ -45,9 +47,9 @@ export default function PorterBoxPickupScreen() {
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.titleText}>Pickup Code</Text>
+          <Text style={[styles.titleText, { color: colors.text }]}>Pickup Code</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -75,7 +77,7 @@ export default function PorterBoxPickupScreen() {
             </View>
           </View>
           <View style={styles.storagePill}>
-            <Ionicons name="cube-outline" size={13} color={Colors.textMuted} />
+            <Ionicons name="cube-outline" size={13} color={colors.textMuted} />
             <Text style={styles.storagePillText}>
               {selectedBoxName ?? "Porter Box"} · {chargeDisplay}
             </Text>
@@ -85,7 +87,7 @@ export default function PorterBoxPickupScreen() {
         {/* Code display */}
         <Text style={styles.codeLabel}>YOUR PICKUP CODE</Text>
         <Text style={styles.code}>{displayCode}</Text>
-        <Text style={styles.codeSub}>Enter this code at the locker keypad</Text>
+        <Text style={[styles.codeSub, { color: colors.textMuted }]}>Enter this code at the locker keypad</Text>
 
         {/* Steps */}
         <View style={styles.steps}>
@@ -94,7 +96,7 @@ export default function PorterBoxPickupScreen() {
               <View style={styles.stepIcon}>
                 <Ionicons name={s.icon} size={16} color={Colors.steel} />
               </View>
-              <Text style={styles.stepText}>{s.text}</Text>
+              <Text style={[styles.stepText, { color: colors.textMuted }]}>{s.text}</Text>
             </View>
           ))}
         </View>

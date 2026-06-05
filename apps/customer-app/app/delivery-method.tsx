@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type DeliverySpeed } from "@/store/bookingStore";
 import { fetchRoute } from "@/services/directions";
 import { calculateFare, type LuggageSize } from "@/services/porterFare";
@@ -61,6 +62,7 @@ function getLuggageSize(counts: { large: number; standard: number; small: number
 
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -190,7 +192,7 @@ export default function DeliveryMethodScreen() {
   );
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
@@ -198,9 +200,9 @@ export default function DeliveryMethodScreen() {
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.stepLabel}>4 of 4</Text>
+          <Text style={[styles.stepLabel, { color: colors.textDim }]}>4 of 4</Text>
         </View>
 
         {/* Mini map — real route + active porters */}
@@ -228,7 +230,7 @@ export default function DeliveryMethodScreen() {
               <Text style={styles.mapPillText}>5 porters nearby</Text>
             </View>
             <View style={styles.expandHint}>
-              <Ionicons name="expand-outline" size={13} color={Colors.text} />
+              <Ionicons name="expand-outline" size={13} color={colors.text} />
               <Text style={styles.expandHintText}>Tap to expand</Text>
             </View>
           </View>
@@ -236,7 +238,7 @@ export default function DeliveryMethodScreen() {
 
         {/* Heading */}
         <Text style={styles.eyebrow}>Delivery Speed</Text>
-        <Text style={styles.heading}>
+        <Text style={[styles.heading, { color: colors.text }]}>
           How soon do you{"\n"}
           <Text style={styles.headingItalic}>need it there?</Text>
         </Text>
@@ -274,7 +276,7 @@ export default function DeliveryMethodScreen() {
         {/* Payment row */}
         <View style={styles.paymentRow}>
           <View style={styles.paymentLeft}>
-            <Ionicons name="card-outline" size={16} color={Colors.textMuted} />
+            <Ionicons name="card-outline" size={16} color={colors.textMuted} />
             <Text style={styles.paymentText}>
               {paymentLoading ? "Loading payment…" : "Pay with card"}
             </Text>
@@ -344,7 +346,7 @@ export default function DeliveryMethodScreen() {
             style={({ pressed }) => [styles.mapCloseBtn, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => setMapExpanded(false)}
           >
-            <Ionicons name="close" size={20} color={Colors.text} />
+            <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
         </View>
       </Modal>

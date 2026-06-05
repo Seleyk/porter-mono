@@ -31,7 +31,8 @@ const STATUS_TO_STAGE: Record<string, number> = {
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
   const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords,
-    assignedDriverName, assignedDriverInitials, assignedDriverRating } = useBookingStore();
+    assignedDriverName, assignedDriverInitials, assignedDriverRating,
+    dropoffMethod, porterBoxCode, selectedBoxName } = useBookingStore();
   const [stageIdx, setStageIdx] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const completedRef = useRef(false);
@@ -235,6 +236,21 @@ export default function TrackingScreen() {
             </View>
           </View>
 
+          {/* Verification code — porter box delivery only, shown when driver arrives */}
+          {dropoffMethod === "box" && stageIdx === 2 && porterBoxCode && (
+            <View style={styles.verifyCard}>
+              <Text style={styles.verifyEyebrow}>VERIFICATION CODE</Text>
+              <View style={styles.verifyDigits}>
+                {porterBoxCode.split("").map((d, i) => (
+                  <Text key={i} style={styles.verifyDigit}>{d}</Text>
+                ))}
+              </View>
+              <Text style={styles.verifySub}>
+                Share with {assignedDriverName?.split(" ")[0] ?? "your porter"} to authorize the handoff.
+              </Text>
+            </View>
+          )}
+
           {/* Porter card */}
           <View style={styles.porterCard}>
             <View style={styles.porterAvatar}>
@@ -284,7 +300,9 @@ export default function TrackingScreen() {
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1, marginTop: 12 }]}
             onPress={() => router.push("/proof-of-delivery")}
           >
-            <Text style={styles.ctaText}>View Delivery Confirmation</Text>
+            <Text style={styles.ctaText}>
+              {dropoffMethod === "box" ? "Your items are secured →" : "View Delivery Confirmation"}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -500,6 +518,37 @@ const styles = StyleSheet.create({
   statusEtaNum: {
     fontFamily: Fonts.semibold,
     color: Colors.steel,
+  },
+  verifyCard: {
+    backgroundColor: "rgba(10,20,35,0.85)",
+    borderRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(229,201,122,0.3)",
+    padding: 20,
+    alignItems: "center",
+    gap: 10,
+  },
+  verifyEyebrow: {
+    fontSize: 10,
+    fontFamily: Fonts.semibold,
+    color: Colors.gold,
+    letterSpacing: 3,
+  },
+  verifyDigits: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  verifyDigit: {
+    fontSize: 44,
+    fontFamily: Fonts.serif,
+    color: "#fff",
+    letterSpacing: -1,
+  },
+  verifySub: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    textAlign: "center",
   },
   skipBtn: {
     flexDirection: "row",

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { addTip, getBooking } from "@/services/booking";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +22,7 @@ const TIPS = [
 
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { deliverySpeed, bookingId, reset, calculatedFare } = useBookingStore();
   const { user, profile } = useAuth();
   const speedLabel = deliverySpeed === "priority" ? "Priority Delivery" : deliverySpeed === "standard" ? "Standard Delivery" : "Scheduled Delivery";
@@ -54,7 +56,7 @@ export default function CompleteScreen() {
   };
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 20, paddingBottom: 8 }}>
           {/* Checkmark */}
@@ -67,16 +69,16 @@ export default function CompleteScreen() {
           {/* Thank you */}
           <View style={styles.thankWrap}>
             <Text style={styles.eyebrow}>Delivered</Text>
-            <Text style={styles.heading}>
+            <Text style={[styles.heading, { color: colors.text }]}>
               Thank you,{"\n"}
               <Text style={styles.headingItalic}>{firstName}.</Text>
             </Text>
-            <Text style={styles.sub}>Your items have been delivered successfully.</Text>
+            <Text style={[styles.sub, { color: colors.textMuted }]}>Your items have been delivered successfully.</Text>
           </View>
 
           {/* Star rating */}
           <View style={styles.ratingCard}>
-            <Text style={styles.ratingTitle}>How was your porter?</Text>
+            <Text style={[styles.ratingTitle, { color: colors.text }]}>How was your porter?</Text>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <Pressable key={s} onPress={() => setRating(s)} hitSlop={8}>
@@ -92,7 +94,7 @@ export default function CompleteScreen() {
 
           {/* Gratuity */}
           <View style={styles.tipCard}>
-            <Text style={styles.tipTitle}>Add gratuity</Text>
+            <Text style={[styles.tipTitle, { color: colors.text }]}>Add gratuity</Text>
             <View style={styles.tipRow}>
               {TIPS.map((t) => (
                 <Pressable
@@ -108,25 +110,25 @@ export default function CompleteScreen() {
 
           {/* Receipt */}
           <View style={styles.receipt}>
-            <Text style={styles.receiptTitle}>Receipt</Text>
+            <Text style={[styles.receiptTitle, { color: colors.text }]}>Receipt</Text>
             <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>{speedLabel}</Text>
-              <Text style={styles.receiptValue}>${speedPrice.toFixed(2)}</Text>
+              <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>{speedLabel}</Text>
+              <Text style={[styles.receiptValue, { color: colors.textMuted }]}>${speedPrice.toFixed(2)}</Text>
             </View>
             <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Service fee</Text>
-              <Text style={styles.receiptValue}>${SERVICE_FEE.toFixed(2)}</Text>
+              <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>Service fee</Text>
+              <Text style={[styles.receiptValue, { color: colors.textMuted }]}>${SERVICE_FEE.toFixed(2)}</Text>
             </View>
             {tip !== null && (
               <View style={styles.receiptRow}>
-                <Text style={styles.receiptLabel}>Gratuity</Text>
-                <Text style={styles.receiptValue}>${tip.toFixed(2)}</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>Gratuity</Text>
+                <Text style={[styles.receiptValue, { color: colors.textMuted }]}>${tip.toFixed(2)}</Text>
               </View>
             )}
             <View style={styles.receiptDivider} />
             <View style={styles.receiptRow}>
-              <Text style={styles.receiptTotal}>Total</Text>
-              <Text style={styles.receiptTotalValue}>${total.toFixed(2)}</Text>
+              <Text style={[styles.receiptTotal, { color: colors.text }]}>Total</Text>
+              <Text style={[styles.receiptTotalValue, { color: colors.text }]}>${total.toFixed(2)}</Text>
             </View>
           </View>
         </ScrollView>

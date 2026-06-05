@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 
 export default function ProofOfDeliveryScreen() {
   const insets = useSafeAreaInsets();
-  const { dropoff } = useBookingStore();
+  const { colors, bgGradient } = useColors();
+  const { dropoff, dropoffMethod, porterBoxCode, selectedBoxName, reset } = useBookingStore();
   const [captured, setCaptured] = useState(false);
   const deliveryTime = useRef(new Date());
 
@@ -21,7 +23,7 @@ export default function ProofOfDeliveryScreen() {
   });
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
@@ -29,64 +31,116 @@ export default function ProofOfDeliveryScreen() {
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.titleText}>Proof of Delivery</Text>
+          <Text style={[styles.titleText, { color: colors.text }]}>Proof of Delivery</Text>
           <View style={{ width: 44 }} />
         </View>
 
-        <Text style={styles.eyebrow}>Confirmation</Text>
-        <Text style={styles.heading}>
-          Your items have{"\n"}
-          <Text style={styles.headingItalic}>arrived safely.</Text>
-        </Text>
+        {dropoffMethod === "box" ? (
+          <>
+            <Text style={styles.eyebrow}>Securing Your Items</Text>
+            <Text style={[styles.heading, { color: colors.text }]}>
+              Your items are{"\n"}
+              <Text style={styles.headingItalic}>secured.</Text>
+            </Text>
 
-        {/* Polaroid card */}
-        <View style={styles.polaroid}>
-          {!captured ? (
-            <Pressable style={styles.viewfinder} onPress={() => setCaptured(true)}>
-              <View style={styles.viewfinderInner}>
-                <Ionicons name="camera-outline" size={32} color={Colors.textMuted} />
-                <Text style={styles.viewfinderText}>Tap to capture photo proof</Text>
+            {/* Polaroid */}
+            <View style={[styles.polaroid, { backgroundColor: "#F5F0E8" }]}>
+              <View style={{ backgroundColor: "#1A1A2E", borderRadius: 2, padding: 14, gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Ionicons name="cube-outline" size={12} color={Colors.gold} />
+                  <Text style={{ fontSize: 10, fontFamily: Fonts.semibold, color: Colors.gold, letterSpacing: 2 }}>
+                    PORTER BOX · B4
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                  <View style={{ width: 80, height: 100, backgroundColor: "#2A2A40", borderRadius: 6, alignItems: "center", justifyContent: "flex-start", paddingTop: 8 }}>
+                    <View style={{ width: 30, height: 8, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 2, borderColor: "rgba(255,255,255,0.2)", borderBottomWidth: 0 }} />
+                    <View style={{ position: "absolute", bottom: 16, right: 10, backgroundColor: Colors.gold, borderRadius: 2, paddingHorizontal: 4, paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 7, fontFamily: Fonts.bold, color: "#000" }}>PRTR</Text>
+                    </View>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 10, fontFamily: Fonts.regular, color: Colors.textDim, textAlign: "right", letterSpacing: 0.5 }}>
+                  {timeStr} · {dateStr}
+                </Text>
               </View>
-              {/* Corner guides */}
-              <View style={[styles.corner, { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 }]} />
-              <View style={[styles.corner, { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 }]} />
-              <View style={[styles.corner, { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
-              <View style={[styles.corner, { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 }]} />
-            </Pressable>
-          ) : (
-            <View style={styles.capturedPhoto}>
-              <Ionicons name="checkmark-circle" size={48} color={Colors.steel} />
-              <Text style={styles.capturedText}>Photo captured</Text>
-              <Text style={styles.capturedSub}>{timeStr} · {dropoff || "Drop-off location"}</Text>
+              <Text style={{ fontSize: 13, fontFamily: Fonts.serifItalic, color: "#3A3020", textAlign: "center", paddingVertical: 12 }}>
+                Stored in <Text style={{ fontFamily: Fonts.serif }}>Compartment B4</Text>
+              </Text>
             </View>
-          )}
-          {/* Polaroid caption */}
-          <View style={styles.polaroidCaption}>
-            <Text style={styles.polaroidLabel}>Delivery · Your Porter</Text>
-            <Text style={styles.polaroidDate}>{dateStr}</Text>
-          </View>
-        </View>
 
-        {/* Signature row */}
-        <View style={styles.sigRow}>
-          <View style={styles.sigIcon}>
-            <Ionicons name="create-outline" size={16} color={Colors.steel} />
-          </View>
-          <Text style={styles.sigText}>Signature confirmation on file</Text>
-          <Ionicons name="checkmark-circle" size={18} color={Colors.steel} />
-        </View>
+            {/* Pickup code */}
+            <View style={styles.codeCard}>
+              <Text style={styles.codeEyebrow}>YOUR PICKUP CODE</Text>
+              <View style={styles.codeRow}>
+                {(porterBoxCode ?? "0000").split("").map((d, i) => (
+                  <Text key={i} style={styles.codeDigit}>{d}</Text>
+                ))}
+              </View>
+              <Text style={[styles.codeSub, { color: colors.textMuted }]}>Also saved under Services › Porter Box.</Text>
+            </View>
 
-        <View style={{ flex: 1 }} />
+            <View style={{ flex: 1 }} />
+            <Pressable
+              style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => { reset(); router.replace("/(tabs)"); }}
+            >
+              <Text style={styles.ctaText}>Save code & go home</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.eyebrow}>Confirmation</Text>
+            <Text style={[styles.heading, { color: colors.text }]}>
+              Your items have{"\n"}
+              <Text style={styles.headingItalic}>arrived safely.</Text>
+            </Text>
 
-        <Pressable
-          style={({ pressed }) => [styles.cta, { opacity: captured ? pressed ? 0.85 : 1 : 0.5 }]}
-          onPress={() => { if (captured) router.replace("/complete"); }}
-        >
-          <Text style={styles.ctaText}>Complete Delivery</Text>
-          <Ionicons name="chevron-forward" size={16} color="#fff" />
-        </Pressable>
+            <View style={styles.polaroid}>
+              {!captured ? (
+                <Pressable style={styles.viewfinder} onPress={() => setCaptured(true)}>
+                  <View style={styles.viewfinderInner}>
+                    <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
+                    <Text style={styles.viewfinderText}>Tap to capture photo proof</Text>
+                  </View>
+                  <View style={[styles.corner, { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 }]} />
+                  <View style={[styles.corner, { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 }]} />
+                  <View style={[styles.corner, { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
+                  <View style={[styles.corner, { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 }]} />
+                </Pressable>
+              ) : (
+                <View style={styles.capturedPhoto}>
+                  <Ionicons name="checkmark-circle" size={48} color={Colors.steel} />
+                  <Text style={styles.capturedText}>Photo captured</Text>
+                  <Text style={styles.capturedSub}>{timeStr} · {dropoff || "Drop-off location"}</Text>
+                </View>
+              )}
+              <View style={styles.polaroidCaption}>
+                <Text style={styles.polaroidLabel}>Delivery · Your Porter</Text>
+                <Text style={styles.polaroidDate}>{dateStr}</Text>
+              </View>
+            </View>
+
+            <View style={styles.sigRow}>
+              <View style={styles.sigIcon}>
+                <Ionicons name="create-outline" size={16} color={Colors.steel} />
+              </View>
+              <Text style={styles.sigText}>Signature confirmation on file</Text>
+              <Ionicons name="checkmark-circle" size={18} color={Colors.steel} />
+            </View>
+
+            <View style={{ flex: 1 }} />
+            <Pressable
+              style={({ pressed }) => [styles.cta, { opacity: captured ? pressed ? 0.85 : 1 : 0.5 }]}
+              onPress={() => { if (captured) router.replace("/complete"); }}
+            >
+              <Text style={styles.ctaText}>Complete Delivery</Text>
+              <Ionicons name="chevron-forward" size={16} color="#fff" />
+            </Pressable>
+          </>
+        )}
       </View>
     </LinearGradient>
   );
@@ -225,6 +279,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.medium,
     color: Colors.text,
+  },
+  codeCard: {
+    backgroundColor: "rgba(10,20,35,0.85)",
+    borderRadius: Radius.xl,
+    borderWidth: 0.5,
+    borderColor: "rgba(229,201,122,0.2)",
+    padding: 20,
+    alignItems: "center",
+    gap: 10,
+  },
+  codeEyebrow: {
+    fontSize: 10,
+    fontFamily: Fonts.semibold,
+    color: Colors.gold,
+    letterSpacing: 3,
+  },
+  codeRow: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  codeDigit: {
+    fontSize: 44,
+    fontFamily: Fonts.serif,
+    color: "#fff",
+    letterSpacing: -1,
+  },
+  codeSub: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: Colors.textMuted,
+    textAlign: "center",
   },
   cta: {
     flexDirection: "row",

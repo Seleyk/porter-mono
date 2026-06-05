@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { createBooking } from "@/services/booking";
@@ -19,6 +20,7 @@ const STEPS = [
 
 export default function FindingPorterScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { user } = useAuth();
   const store = useBookingStore();
   const pulse = useRef(new Animated.Value(1)).current;
@@ -56,6 +58,9 @@ export default function FindingPorterScreen() {
       const driverRef = store.pickupCoords ?? DEMO_USER_COORDS;
       const driver = closestAvailableDriver(driverRef);
       store.setAssignedDriver(driver.name, driver.initials, driver.rating);
+      if (store.dropoffMethod === "box") {
+        store.setPorterBoxCode(String(Math.floor(1000 + Math.random() * 9000)));
+      }
       createBooking({
         customerId: user.id,
         pickup: store.pickup,
@@ -78,13 +83,13 @@ export default function FindingPorterScreen() {
   }, [progress]);
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }]}>
         {/* Cancel */}
         <View style={styles.topBar}>
           <View style={{ flex: 1 }} />
           <Pressable onPress={() => router.back()}>
-            <Text style={styles.cancel}>Cancel</Text>
+            <Text style={[styles.cancel, { color: colors.textMuted }]}>Cancel</Text>
           </Pressable>
         </View>
 
@@ -99,8 +104,8 @@ export default function FindingPorterScreen() {
           </View>
         </View>
 
-        <Text style={styles.heading}>Finding your{"\n"}<Text style={styles.headingItalic}>porter.</Text></Text>
-        <Text style={styles.step}>{STEPS[stepIdx]}</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>Finding your{"\n"}<Text style={styles.headingItalic}>porter.</Text></Text>
+        <Text style={[styles.step, { color: colors.textMuted }]}>{STEPS[stepIdx]}</Text>
 
         {/* Progress bar */}
         <View style={styles.progressTrack}>
@@ -115,8 +120,8 @@ export default function FindingPorterScreen() {
             <Ionicons name="shield-checkmark-outline" size={20} color={Colors.steel} />
           </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <Text style={styles.idTitle}>Identity-verified porters</Text>
-            <Text style={styles.idDesc}>Every porter is background-checked and trained before their first delivery.</Text>
+            <Text style={[styles.idTitle, { color: colors.text }]}>Identity-verified porters</Text>
+            <Text style={[styles.idDesc, { color: colors.textMuted }]}>Every porter is background-checked and trained before their first delivery.</Text>
           </View>
         </View>
       </View>

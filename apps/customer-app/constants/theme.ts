@@ -33,6 +33,30 @@ export const Colors = {
   buttonSecondary: "rgba(255,255,255,0.06)",
 };
 
+export const LightColors = {
+  bgDeep: "#FDFCE8",
+  background: "#FDFCE8",
+  surface: "#FFFFFF",
+  card: "rgba(14,15,18,0.07)",
+  cardBorder: "rgba(14,15,18,0.14)",
+  cardElev: "rgba(14,15,18,0.07)",
+  cardElevBorder: "rgba(14,15,18,0.14)",
+  navy: "#0B2A4A",
+  midnight: "#1F3D63",
+  steel: "#4A7FA8",
+  gold: "#E5C97A",
+  evergreen: "#4E6F64",
+  primary: "#1F3D63",
+  primaryLight: "#4A7FA8",
+  text: "#0E0F12",
+  textMuted: "rgba(14,15,18,0.72)",
+  textDim: "rgba(14,15,18,0.55)",
+  textSecondary: "rgba(14,15,18,0.72)",
+  textTertiary: "rgba(14,15,18,0.55)",
+  divider: "rgba(14,15,18,0.12)",
+  buttonSecondary: "rgba(14,15,18,0.07)",
+};
+
 export const Fonts = {
   // Manrope — UI sans-serif
   light: "Manrope_300Light",

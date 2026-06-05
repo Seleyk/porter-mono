@@ -8,12 +8,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type LatLng } from "@/store/bookingStore";
 import { searchPlaces, type MapboxFeature } from "@/services/geocoding";
 import { DEMO_FAVORITES, DEMO_RECENTS } from "@/constants/simulation";
 
 export default function WhereToScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { pickup, dropoff, pickupCoords: storePickupCoords, dropoffCoords: storeDropoffCoords, setRoute } = useBookingStore();
   const [localPickup, setLocalPickup] = useState(pickup);
   const [localDropoff, setLocalDropoff] = useState(dropoff);
@@ -79,7 +81,7 @@ export default function WhereToScreen() {
   const showSuggestions = suggestions.length > 0 || isSearching;
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
           {/* Top bar */}
@@ -88,32 +90,32 @@ export default function WhereToScreen() {
               style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
               onPress={() => router.back()}
             >
-              <Ionicons name="chevron-back" size={18} color={Colors.text} />
+              <Ionicons name="chevron-back" size={18} color={colors.text} />
             </Pressable>
-            <Text style={styles.title}>Where To?</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Where To?</Text>
             <View style={{ width: 44 }} />
           </View>
 
           {/* Pickup / Dropoff card */}
-          <View style={styles.routeCard}>
+          <View style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.routeRow}>
               <View style={styles.dotWrap}>
                 <View style={styles.dotPickup} />
               </View>
               <TextInput
-                style={styles.routeInput}
+                style={[styles.routeInput, { color: colors.text }]}
                 placeholder="Pickup location"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 value={localPickup}
                 onFocus={() => setActiveField("pickup")}
                 onChangeText={(t) => handleTextChange(t, "pickup")}
-                selectionColor={Colors.steel}
+                selectionColor={colors.steel}
                 returnKeyType="next"
                 onSubmitEditing={() => dropoffRef.current?.focus()}
               />
               {localPickup.length > 0 && (
                 <Pressable onPress={() => { setLocalPickup(""); setPickupCoords(null); setSuggestions([]); }} hitSlop={8}>
-                  <Ionicons name="close-circle" size={17} color={Colors.textDim} />
+                  <Ionicons name="close-circle" size={17} color={colors.textDim} />
                 </Pressable>
               )}
             </View>
@@ -130,18 +132,18 @@ export default function WhereToScreen() {
               </View>
               <TextInput
                 ref={dropoffRef}
-                style={styles.routeInput}
+                style={[styles.routeInput, { color: colors.text }]}
                 placeholder="Drop-off location"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 value={localDropoff}
                 onFocus={() => setActiveField("dropoff")}
                 onChangeText={(t) => handleTextChange(t, "dropoff")}
-                selectionColor={Colors.steel}
+                selectionColor={colors.steel}
                 returnKeyType="done"
               />
               {localDropoff.length > 0 && (
                 <Pressable onPress={() => { setLocalDropoff(""); setDropoffCoords(null); setSuggestions([]); }} hitSlop={8}>
-                  <Ionicons name="close-circle" size={17} color={Colors.textDim} />
+                  <Ionicons name="close-circle" size={17} color={colors.textDim} />
                 </Pressable>
               )}
             </View>
@@ -151,11 +153,11 @@ export default function WhereToScreen() {
           <View style={styles.chips}>
             <Pressable style={styles.chip}>
               <Ionicons name="map-outline" size={14} color={Colors.steel} />
-              <Text style={styles.chipText}>Set on map</Text>
+              <Text style={[styles.chipText, { color: colors.steel }]}>Set on map</Text>
             </Pressable>
             <Pressable style={styles.chip}>
               <Ionicons name="calendar-outline" size={14} color={Colors.steel} />
-              <Text style={styles.chipText}>Schedule</Text>
+              <Text style={[styles.chipText, { color: colors.steel }]}>Schedule</Text>
             </Pressable>
           </View>
 
@@ -167,7 +169,7 @@ export default function WhereToScreen() {
             {showSuggestions ? (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionLabel}>{isSearching ? "SEARCHING…" : "SUGGESTIONS"}</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{isSearching ? "SEARCHING…" : "SUGGESTIONS"}</Text>
                   {isSearching && <ActivityIndicator size="small" color={Colors.steel} />}
                 </View>
                 {suggestions.map((f) => (
@@ -180,8 +182,8 @@ export default function WhereToScreen() {
                       <Ionicons name="location-outline" size={16} color={Colors.steel} />
                     </View>
                     <View style={styles.listText}>
-                      <Text style={styles.listTitle} numberOfLines={1}>{f.text}</Text>
-                      <Text style={styles.listSub} numberOfLines={1}>{f.place_name}</Text>
+                      <Text style={[styles.listTitle, { color: colors.text }]} numberOfLines={1}>{f.text}</Text>
+                      <Text style={[styles.listSub, { color: colors.textMuted }]} numberOfLines={1}>{f.place_name}</Text>
                     </View>
                   </Pressable>
                 ))}
@@ -189,7 +191,7 @@ export default function WhereToScreen() {
             ) : (
               <>
                 <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>FAVORITES</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FAVORITES</Text>
                   {DEMO_FAVORITES.map((f) => (
                     <Pressable
                       key={f.label}
@@ -200,15 +202,15 @@ export default function WhereToScreen() {
                         <Ionicons name={f.icon as any} size={16} color={Colors.steel} />
                       </View>
                       <View style={styles.listText}>
-                        <Text style={styles.listTitle}>{f.label}</Text>
-                        <Text style={styles.listSub}>{f.sub}</Text>
+                        <Text style={[styles.listTitle, { color: colors.text }]}>{f.label}</Text>
+                        <Text style={[styles.listSub, { color: colors.textMuted }]}>{f.sub}</Text>
                       </View>
                     </Pressable>
                   ))}
                 </View>
 
                 <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>RECENT</Text>
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>RECENT</Text>
                   {DEMO_RECENTS.map((r) => (
                     <Pressable
                       key={r.label}
@@ -216,11 +218,11 @@ export default function WhereToScreen() {
                       onPress={() => handleSelectFavorite(r.label, r.coords)}
                     >
                       <View style={styles.listIconBox}>
-                        <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
+                        <Ionicons name="time-outline" size={16} color={colors.textMuted} />
                       </View>
                       <View style={styles.listText}>
-                        <Text style={styles.listTitle}>{r.label}</Text>
-                        <Text style={styles.listSub}>{r.sub}</Text>
+                        <Text style={[styles.listTitle, { color: colors.text }]}>{r.label}</Text>
+                        <Text style={[styles.listSub, { color: colors.textMuted }]}>{r.sub}</Text>
                       </View>
                     </Pressable>
                   ))}

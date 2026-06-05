@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { getCustomerBookings } from "@/services/booking";
@@ -57,6 +58,7 @@ function formatDate(iso: string): string {
 export default function PortsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors } = useColors();
   const [bookings, setBookings] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +73,7 @@ export default function PortsScreen() {
   const past   = bookings.filter((b) => !ACTIVE_STATUSES.has(b.status));
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bgDeep }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}

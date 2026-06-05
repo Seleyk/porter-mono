@@ -1,39 +1,62 @@
 import { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, ImageBackground } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Colors, Fonts, Radius } from "@/constants/theme";
+import { Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { fetchActivePorterBoxOrders, type PorterBoxOrder } from "@/services/porterBox";
-
-const FEATURES = [
-  { icon: "shield-checkmark-outline", label: "Identity-verified porters" },
-  { icon: "navigate-outline", label: "Live GPS tracking" },
-  { icon: "create-outline", label: "Signature on delivery" },
-];
+import { useBookingStore } from "@/store/bookingStore";
 
 export default function ServicesScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useColors();
   const [activeOrders, setActiveOrders] = useState<PorterBoxOrder[]>([]);
+  const { porterBoxCode, dropoffMethod, selectedBoxName } = useBookingStore();
 
   useEffect(() => {
     fetchActivePorterBoxOrders().then(setActiveOrders);
   }, []);
 
+  // Synthetic active order from completed driver-delivered box booking
+  const hasStoreOrder = !!porterBoxCode && dropoffMethod === "box";
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>AT YOUR SERVICE</Text>
-          <Text style={styles.heading}>
+          <Text style={[styles.eyebrow, { color: colors.steel }]}>AT YOUR SERVICE</Text>
+          <Text style={[styles.heading, { color: colors.text }]}>
             Choose your{"\n"}
-            <Text style={styles.headingItalic}>occasion.</Text>
+            <Text style={[styles.headingItalic, { color: colors.steel }]}>occasion.</Text>
           </Text>
         </View>
 
-        {/* Active porter box orders */}
+        {/* Synthetic active order from store (driver-delivered to box) */}
+        {hasStoreOrder && (
+          <Pressable
+            style={({ pressed }) => [styles.activeOrderCard, { opacity: pressed ? 0.88 : 1 }]}
+            onPress={() => router.push("/porter-box-hub")}
+          >
+            <View style={styles.activeOrderTop}>
+              <View style={styles.activeOrderPill}>
+                <View style={styles.activeOrderDot} />
+                <Text style={styles.activeOrderPillText}>READY FOR PICKUP</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="rgba(229,201,122,0.6)" />
+            </View>
+            <Text style={styles.activeOrderName}>
+              Porter Box · {selectedBoxName ?? "Hub"}
+            </Text>
+            <Text style={styles.activeOrderCode}>
+              CODE · {(porterBoxCode ?? "----").split("").join(" ")}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* Supabase active orders */}
         {activeOrders.map((order) => (
           <Pressable
             key={order.id}
@@ -45,7 +68,7 @@ export default function ServicesScreen() {
                 <View style={styles.activeOrderDot} />
                 <Text style={styles.activeOrderPillText}>READY FOR PICKUP</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+              <Ionicons name="chevron-forward" size={16} color="rgba(229,201,122,0.6)" />
             </View>
             <Text style={styles.activeOrderName}>
               Porter Box · {order.porter_hubs?.name ?? "Hub"}
@@ -56,71 +79,69 @@ export default function ServicesScreen() {
           </Pressable>
         ))}
 
-        {/* Porter Signature card */}
+        {/* Porter — compact image card */}
         <Pressable
           style={({ pressed }) => [styles.serviceCard, { opacity: pressed ? 0.92 : 1 }]}
           onPress={() => router.push("/where-to")}
         >
-          <LinearGradient
-            colors={["rgba(18,62,107,0.7)", "rgba(10,31,58,0.9)"]}
-            style={StyleSheet.absoluteFillObject}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <View style={styles.cardBadge}>
-            <Text style={styles.cardBadgeText}>SIGNATURE</Text>
-          </View>
-          <View style={styles.cardIcon}>
-            <Ionicons name="briefcase-outline" size={28} color={Colors.steel} />
-          </View>
-          <Text style={styles.cardTitle}>Porter</Text>
-          <Text style={styles.cardDesc}>
-            A dedicated professional delivers your items with white-glove care — door to door.
-          </Text>
-          <View style={styles.featureList}>
-            {FEATURES.map((f) => (
-              <View key={f.label} style={styles.featureRow}>
-                <Ionicons name={f.icon as any} size={14} color={Colors.steel} />
-                <Text style={styles.featureText}>{f.label}</Text>
+          <ImageBackground
+            source={require("@/assets/porter.avif")}
+            style={styles.cardBg}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={["rgba(10,31,58,0.60)", "rgba(5,11,22,0.88)"]}
+              style={styles.cardGradient}
+            >
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="briefcase-outline" size={22} color="#6FA3C8" />
               </View>
-            ))}
-          </View>
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardPrice}>From $18</Text>
-            <View style={styles.cardCta}>
-              <Text style={styles.cardCtaText}>Book Now</Text>
-              <Ionicons name="chevron-forward" size={14} color="#fff" />
-            </View>
-          </View>
+              <View style={styles.cardContent}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={styles.cardTitle}>Porter</Text>
+                  <View style={styles.signatureBadge}>
+                    <Text style={styles.signatureBadgeText}>SIGNATURE</Text>
+                  </View>
+                </View>
+                <Text style={styles.cardDesc} numberOfLines={1}>White-glove luggage handling, building to building.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
+            </LinearGradient>
+          </ImageBackground>
         </Pressable>
 
-        {/* Porter Box card */}
+        {/* Porter Box — compact image card */}
         <Pressable
-          style={({ pressed }) => [styles.boxCard, { opacity: pressed ? 0.92 : 1 }]}
+          style={({ pressed }) => [styles.serviceCard, { opacity: pressed ? 0.92 : 1 }]}
           onPress={() => router.push("/porter-box-hub")}
         >
-          <View style={styles.boxTopRow}>
-            <View style={styles.boxIconWrap}>
-              <Ionicons name="cube-outline" size={22} color={Colors.gold} />
-            </View>
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-          </View>
-          <Text style={styles.boxTitle}>Porter Box</Text>
-          <Text style={styles.boxDesc}>
-            Secure, climate-controlled storage lockers near you. Drop off or pick up anytime.
-          </Text>
-          <View style={styles.boxMeta}>
-            <View style={styles.boxMetaItem}>
-              <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-              <Text style={styles.boxMetaText}>$10 / hr</Text>
-            </View>
-            <View style={styles.boxMetaItem}>
-              <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
-              <Text style={styles.boxMetaText}>3 locations nearby</Text>
-            </View>
-          </View>
+          <ImageBackground
+            source={require("@/assets/locker.avif")}
+            style={styles.cardBg}
+            resizeMode="cover"
+          >
+            <LinearGradient
+              colors={["rgba(10,31,58,0.60)", "rgba(5,11,22,0.88)"]}
+              style={styles.cardGradient}
+            >
+              <View style={[styles.cardIconWrap, styles.cardIconWrapGold]}>
+                <Ionicons name="cube-outline" size={22} color="#E5C97A" />
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={styles.cardTitle}>Porter Box</Text>
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>NEW</Text>
+                  </View>
+                  <View style={styles.priceBadge}>
+                    <Text style={styles.priceBadgeText}>$10 / hr</Text>
+                  </View>
+                </View>
+                <Text style={styles.cardDesc} numberOfLines={1}>Secure storage by the hour. Drop, explore, collect.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
+            </LinearGradient>
+          </ImageBackground>
         </Pressable>
       </ScrollView>
     </View>
@@ -128,22 +149,12 @@ export default function ServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bgDeep,
-  },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    marginTop: 20,
-    marginBottom: 28,
-  },
+  container: { flex: 1 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+  header: { marginTop: 20, marginBottom: 24 },
   eyebrow: {
     fontSize: 11,
     fontFamily: Fonts.medium,
-    color: Colors.steel,
     letterSpacing: 4,
     textTransform: "uppercase",
     marginBottom: 10,
@@ -151,164 +162,101 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 36,
     fontFamily: Fonts.serif,
-    color: "#fff",
     lineHeight: 44,
     letterSpacing: -0.3,
   },
   headingItalic: {
     fontFamily: Fonts.serifItalic,
-    color: Colors.steel,
   },
   serviceCard: {
+    height: 120,
     borderRadius: Radius.xl,
-    borderWidth: 0.5,
-    borderColor: "rgba(111,163,200,0.3)",
-    padding: 22,
-    marginBottom: 16,
     overflow: "hidden",
+    marginBottom: 14,
+  },
+  cardBg: { flex: 1 },
+  cardGradient: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     gap: 14,
   },
-  cardBadge: {
-    alignSelf: "flex-start",
+  cardIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: "rgba(111,163,200,0.18)",
+    borderWidth: 0.5,
+    borderColor: "rgba(111,163,200,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  cardIconWrapGold: {
+    backgroundColor: "rgba(229,201,122,0.15)",
+    borderColor: "rgba(229,201,122,0.3)",
+  },
+  cardContent: { flex: 1, gap: 5 },
+  cardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontFamily: Fonts.serifItalic,
+    color: "#fff",
+    letterSpacing: -0.2,
+  },
+  cardDesc: {
+    fontSize: 12,
+    fontFamily: Fonts.regular,
+    color: "rgba(255,255,255,0.6)",
+    lineHeight: 18,
+  },
+  signatureBadge: {
+    backgroundColor: "rgba(229,201,122,0.12)",
+    borderRadius: Radius.full,
+    borderWidth: 0.5,
+    borderColor: "rgba(229,201,122,0.3)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  signatureBadgeText: {
+    fontSize: 9,
+    fontFamily: Fonts.semibold,
+    color: "#E5C97A",
+    letterSpacing: 1.5,
+  },
+  newBadge: {
     backgroundColor: "rgba(111,163,200,0.15)",
     borderRadius: Radius.full,
     borderWidth: 0.5,
     borderColor: "rgba(111,163,200,0.3)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  cardBadgeText: {
-    fontSize: 10,
-    fontFamily: Fonts.semibold,
-    color: Colors.steel,
-    letterSpacing: 2.5,
-  },
-  cardIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: Radius.md,
-    backgroundColor: "rgba(111,163,200,0.1)",
-    borderWidth: 0.5,
-    borderColor: "rgba(111,163,200,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardTitle: {
-    fontSize: 28,
-    fontFamily: Fonts.serif,
-    color: "#fff",
-    letterSpacing: -0.3,
-  },
-  cardDesc: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.textMuted,
-    lineHeight: 22,
-  },
-  featureList: {
-    gap: 8,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 13,
-    fontFamily: Fonts.regular,
-    color: Colors.textMuted,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  cardPrice: {
-    fontSize: 20,
-    fontFamily: Fonts.semibold,
-    color: "#fff",
-  },
-  cardCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.midnight,
-    borderRadius: Radius.xl,
-    borderWidth: 0.5,
-    borderColor: "rgba(111,163,200,0.4)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  cardCtaText: {
-    fontSize: 14,
-    fontFamily: Fonts.semibold,
-    color: "#fff",
-    letterSpacing: 0.2,
-  },
-  boxCard: {
-    backgroundColor: "rgba(20,46,80,0.55)",
-    borderRadius: Radius.xl,
-    borderWidth: 0.5,
-    borderColor: "rgba(229,201,122,0.2)",
-    padding: 22,
-    gap: 12,
-  },
-  boxTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  boxIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    backgroundColor: "rgba(229,201,122,0.1)",
-    borderWidth: 0.5,
-    borderColor: "rgba(229,201,122,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  newBadge: {
-    backgroundColor: "rgba(229,201,122,0.15)",
-    borderRadius: Radius.full,
-    borderWidth: 0.5,
-    borderColor: "rgba(229,201,122,0.3)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   newBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: Fonts.semibold,
-    color: Colors.gold,
-    letterSpacing: 2.5,
+    color: "#6FA3C8",
+    letterSpacing: 1.5,
   },
-  boxTitle: {
-    fontSize: 24,
-    fontFamily: Fonts.serif,
-    color: "#fff",
-    letterSpacing: -0.2,
+  priceBadge: {
+    backgroundColor: "rgba(229,201,122,0.12)",
+    borderRadius: Radius.full,
+    borderWidth: 0.5,
+    borderColor: "rgba(229,201,122,0.25)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  boxDesc: {
-    fontSize: 14,
-    fontFamily: Fonts.regular,
-    color: Colors.textMuted,
-    lineHeight: 22,
-  },
-  boxMeta: {
-    flexDirection: "row",
-    gap: 20,
-    marginTop: 4,
-  },
-  boxMetaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  boxMetaText: {
-    fontSize: 13,
-    fontFamily: Fonts.regular,
-    color: Colors.textMuted,
+  priceBadgeText: {
+    fontSize: 9,
+    fontFamily: Fonts.semibold,
+    color: "#E5C97A",
+    letterSpacing: 0.5,
   },
   activeOrderCard: {
     backgroundColor: "rgba(229,201,122,0.06)",
@@ -317,7 +265,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(229,201,122,0.3)",
     padding: 18,
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   activeOrderTop: {
     flexDirection: "row",
@@ -333,23 +281,23 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.gold,
+    backgroundColor: "#E5C97A",
   },
   activeOrderPillText: {
     fontSize: 10,
     fontFamily: Fonts.semibold,
-    color: Colors.gold,
+    color: "#E5C97A",
     letterSpacing: 2,
   },
   activeOrderName: {
     fontSize: 17,
     fontFamily: Fonts.semibold,
-    color: Colors.text,
+    color: "#fff",
   },
   activeOrderCode: {
     fontSize: 12,
     fontFamily: Fonts.medium,
-    color: Colors.textMuted,
+    color: "rgba(244,246,248,0.6)",
     letterSpacing: 1.5,
   },
 });

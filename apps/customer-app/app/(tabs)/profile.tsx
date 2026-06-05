@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View, Pressable, ScrollView, Alert } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView, Alert, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { Profile } from "@/lib/database.types";
 
@@ -29,6 +30,7 @@ const SETTINGS = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { profile, user, signOut } = useAuth();
+  const { colors, isDark, toggleTheme } = useColors();
 
   const completion = calcCompletion(profile);
   const initials = profile
@@ -45,19 +47,19 @@ export default function ProfileScreen() {
   const soon = () => Alert.alert("Coming soon", "This feature is on its way.");
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bgDeep }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
       >
         {/* Top bar */}
         <View style={styles.topBar}>
-          <Pressable style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]} onPress={soon}>
-            <Ionicons name="git-network-outline" size={19} color={Colors.text} />
+          <Pressable style={({ pressed }) => [styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]} onPress={soon}>
+            <Ionicons name="git-network-outline" size={19} color={colors.text} />
           </Pressable>
-          <Text style={styles.topTitle}>Profile</Text>
-          <Pressable style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]} onPress={soon}>
-            <Ionicons name="settings-outline" size={19} color={Colors.text} />
+          <Text style={[styles.topTitle, { color: colors.text }]}>Profile</Text>
+          <Pressable style={({ pressed }) => [styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]} onPress={soon}>
+            <Ionicons name="settings-outline" size={19} color={colors.text} />
           </Pressable>
         </View>
 
@@ -72,10 +74,10 @@ export default function ProfileScreen() {
           <View style={styles.completionPill}>
             <Text style={styles.completionText}>{completion}%</Text>
           </View>
-          <Text style={styles.profileName}>
+          <Text style={[styles.profileName, { color: colors.text }]}>
             {profile ? `${profile.first_name} ${profile.last_name}` : "—"}
           </Text>
-          <Text style={styles.profileEmail}>{user?.email ?? "—"}</Text>
+          <Text style={[styles.profileEmail, { color: colors.textMuted }]}>{user?.email ?? "—"}</Text>
         </View>
 
         {/* 2x2 quick action grid */}
@@ -83,42 +85,58 @@ export default function ProfileScreen() {
           {QUICK_ACTIONS.map((a) => (
             <Pressable
               key={a.label}
-              style={({ pressed }) => [styles.gridCell, { opacity: pressed ? 0.75 : 1 }]}
+              style={({ pressed }) => [styles.gridCell, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.75 : 1 }]}
               onPress={soon}
             >
               <View style={styles.gridIconWrap}>
-                <Ionicons name={a.icon} size={22} color={Colors.steel} />
+                <Ionicons name={a.icon} size={22} color={colors.steel} />
               </View>
-              <Text style={styles.gridLabel}>{a.label}</Text>
-              <Text style={styles.gridSub}>{a.sub}</Text>
+              <Text style={[styles.gridLabel, { color: colors.text }]}>{a.label}</Text>
+              <Text style={[styles.gridSub, { color: colors.textMuted }]}>{a.sub}</Text>
             </Pressable>
           ))}
         </View>
 
         {/* Settings rows */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {SETTINGS.map((row, i) => (
             <Pressable
               key={row.label}
               style={({ pressed }) => [
                 styles.row,
+                { borderBottomColor: colors.cardBorder },
                 i < SETTINGS.length - 1 && styles.rowDivider,
                 { opacity: pressed ? 0.75 : 1 },
               ]}
               onPress={soon}
             >
-              <View style={styles.rowIconWrap}>
-                <Ionicons name={row.icon} size={17} color={Colors.textMuted} />
+              <View style={[styles.rowIconWrap, { backgroundColor: colors.buttonSecondary }]}>
+                <Ionicons name={row.icon} size={17} color={colors.textMuted} />
               </View>
-              <Text style={styles.rowLabel}>{row.label}</Text>
-              <Ionicons name="chevron-forward" size={15} color={Colors.textDim} />
+              <Text style={[styles.rowLabel, { color: colors.text }]}>{row.label}</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.textDim} />
             </Pressable>
           ))}
+          {/* Appearance toggle */}
+          <View style={[styles.row, { borderTopWidth: 0.5, borderTopColor: colors.cardBorder }]}>
+            <View style={[styles.rowIconWrap, { backgroundColor: colors.buttonSecondary }]}>
+              <Ionicons name={isDark ? "moon-outline" : "sunny-outline"} size={17} color={colors.textMuted} />
+            </View>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              {isDark ? "Dark mode" : "Light mode"}
+            </Text>
+            <Switch
+              value={!isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: "rgba(255,255,255,0.1)", true: colors.steel }}
+              thumbColor="#fff"
+            />
+          </View>
         </View>
 
         {/* Sign out */}
         <Pressable
-          style={({ pressed }) => [styles.signOutRow, { opacity: pressed ? 0.75 : 1 }]}
+          style={({ pressed }) => [styles.signOutRow, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.75 : 1 }]}
           onPress={handleSignOut}
         >
           <View style={[styles.rowIconWrap, styles.signOutIcon]}>
@@ -127,14 +145,14 @@ export default function ProfileScreen() {
           <Text style={styles.signOutLabel}>Sign Out</Text>
         </Pressable>
 
-        <Text style={styles.version}>Porter · v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.textDim }]}>Porter · v1.0.0</Text>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
+  container: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
 
   topBar: {

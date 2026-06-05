@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type DropoffMethod } from "@/store/bookingStore";
 
 const BOXES = [
@@ -15,6 +16,7 @@ const BOXES = [
 
 export default function DropoffMethodScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { dropoffMethod, selectedBoxId, setDropoffMethod, setSelectedBox } = useBookingStore();
   const [method, setMethod] = useState<DropoffMethod>(dropoffMethod);
   const [selectedBox, setLocalBox] = useState<string | null>(selectedBoxId);
@@ -22,7 +24,7 @@ export default function DropoffMethodScreen() {
   const canContinue = method === "door" || (method === "box" && selectedBox !== null);
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
@@ -30,14 +32,14 @@ export default function DropoffMethodScreen() {
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.stepLabel}>3 of 4</Text>
+          <Text style={[styles.stepLabel, { color: colors.textDim }]}>3 of 4</Text>
         </View>
 
         {/* Heading */}
         <Text style={styles.eyebrow}>Drop-off Method</Text>
-        <Text style={styles.heading}>
+        <Text style={[styles.heading, { color: colors.text }]}>
           Where shall we{"\n"}
           <Text style={styles.headingItalic}>leave your items?</Text>
         </Text>

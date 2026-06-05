@@ -1,31 +1,26 @@
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Fonts } from "@/constants/theme";
-
-type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
-
-function tabIcon(focused: boolean, active: IoniconsName, inactive: IoniconsName) {
-  return ({ color }: { color: string }) => (
-    <Ionicons name={focused ? active : inactive} size={22} color={color} />
-  );
-}
+import { Fonts } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 
 export default function TabLayout() {
+  const { colors } = useColors();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.background,
-          borderTopColor: Colors.cardBorder,
+          backgroundColor: colors.background,
+          borderTopColor: colors.cardBorder,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 84 : 68,
           paddingTop: 10,
           paddingBottom: Platform.OS === "ios" ? 26 : 10,
         },
-        tabBarActiveTintColor: Colors.text,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: colors.text,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontFamily: Fonts.medium,
           fontSize: 11,

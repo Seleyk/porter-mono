@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { DEMO_DRIVERS } from "@/constants/simulation";
 
@@ -13,6 +14,7 @@ const COMPARTMENT = "B4";
 
 export default function PorterBoxHandoffScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const [phase, setPhase] = useState<"verify" | "ready">("verify");
   const {
     porterBoxCode,
@@ -33,7 +35,7 @@ export default function PorterBoxHandoffScreen() {
 
   if (phase === "ready") {
     return (
-      <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+      <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
@@ -42,7 +44,7 @@ export default function PorterBoxHandoffScreen() {
           <Text style={styles.eyebrow}>SECURING YOUR ITEMS</Text>
 
           {/* Heading */}
-          <Text style={styles.heading}>
+          <Text style={[styles.heading, { color: colors.text }]}>
             Your pickup code is{" "}
             <Text style={styles.headingItalic}>ready.</Text>
           </Text>
@@ -82,7 +84,7 @@ export default function PorterBoxHandoffScreen() {
                 <Text key={i} style={styles.codeDigit}>{d}</Text>
               ))}
             </View>
-            <Text style={styles.codeSub}>Also saved under Services › Porter Box.</Text>
+            <Text style={[styles.codeSub, { color: colors.textMuted }]}>Also saved under Services › Porter Box.</Text>
           </View>
 
           {/* CTA */}
@@ -99,7 +101,7 @@ export default function PorterBoxHandoffScreen() {
 
   // Phase 1 — verify
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
@@ -109,7 +111,7 @@ export default function PorterBoxHandoffScreen() {
           <View style={styles.phasePill}>
             <Text style={styles.phaseText}>PHASE 1 · PICKUP</Text>
           </View>
-          <Text style={styles.stepLabel}>Step 4 of 4</Text>
+          <Text style={[styles.stepLabel, { color: colors.textDim }]}>Step 4 of 4</Text>
         </View>
 
         {/* Status */}
@@ -119,7 +121,7 @@ export default function PorterBoxHandoffScreen() {
         </View>
 
         {/* Heading */}
-        <Text style={styles.heading}>
+        <Text style={[styles.heading, { color: colors.text }]}>
           {driverFirstName} is at{"\n"}your door.
         </Text>
         <Text style={styles.verifyCodeHint}>
@@ -155,10 +157,10 @@ export default function PorterBoxHandoffScreen() {
           </View>
           <View style={styles.driverActions}>
             <Pressable style={styles.driverActionBtn}>
-              <Ionicons name="refresh-outline" size={18} color={Colors.text} />
+              <Ionicons name="refresh-outline" size={18} color={colors.text} />
             </Pressable>
             <Pressable style={styles.driverActionBtn}>
-              <Ionicons name="call-outline" size={18} color={Colors.text} />
+              <Ionicons name="call-outline" size={18} color={colors.text} />
             </Pressable>
           </View>
         </View>
@@ -192,7 +194,7 @@ export default function PorterBoxHandoffScreen() {
               <Text key={i} style={styles.codeDigit}>{d}</Text>
             ))}
           </View>
-          <Text style={styles.codeSub}>Share with {driverFirstName} to authorize the handoff.</Text>
+          <Text style={[styles.codeSub, { color: colors.textMuted }]}>Share with {driverFirstName} to authorize the handoff.</Text>
         </View>
 
         {/* CTA */}

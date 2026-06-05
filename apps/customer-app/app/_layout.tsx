@@ -8,6 +8,7 @@ import MapboxGL from "@rnmapbox/maps";
 
 MapboxGL.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import {
   Manrope_300Light,
   Manrope_400Regular,
@@ -68,6 +69,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
+    <ThemeProvider>
     <StripeProvider
       publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
       merchantIdentifier="merchant.com.porter.customer"
@@ -99,6 +101,7 @@ export default function RootLayout() {
             {/* Porter Box */}
             <Stack.Screen name="porter-box-hub" />
             <Stack.Screen name="porter-box-handoff" />
+            <Stack.Screen name="porter-box-stored" />
             <Stack.Screen name="porter-box-pickup" />
             <Stack.Screen name="porter-box-collected" options={{ animation: "fade_from_bottom" }} />
           </Stack>
@@ -106,5 +109,6 @@ export default function RootLayout() {
         </RouteGuard>
       </AuthProvider>
     </StripeProvider>
+    </ThemeProvider>
   );
 }

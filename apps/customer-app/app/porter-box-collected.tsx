@@ -4,11 +4,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 
 export default function PorterBoxCollectedScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { profile } = useAuth();
   const { porterBoxChargeCents, selectedBoxName, storageHours, reset } = useBookingStore();
 
@@ -22,7 +24,7 @@ export default function PorterBoxCollectedScreen() {
   ];
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }]}>
         <View style={{ flex: 1 }} />
 
@@ -36,28 +38,28 @@ export default function PorterBoxCollectedScreen() {
         {/* Heading */}
         <View style={styles.textBlock}>
           <Text style={styles.eyebrow}>All Done</Text>
-          <Text style={styles.heading}>
+          <Text style={[styles.heading, { color: colors.text }]}>
             Safe travels,{"\n"}
             <Text style={styles.headingItalic}>{firstName}.</Text>
           </Text>
-          <Text style={styles.sub}>
+          <Text style={[styles.sub, { color: colors.textMuted }]}>
             Your items were stored safely at {selectedBoxName ?? "Porter Box"}.
           </Text>
         </View>
 
         {/* Charge summary */}
         <View style={styles.chargeCard}>
-          <Text style={styles.chargeTitle}>Storage Summary</Text>
+          <Text style={[styles.chargeTitle, { color: colors.text }]}>Storage Summary</Text>
           {CHARGE.map((c) => (
             <View key={c.label} style={styles.chargeRow}>
-              <Text style={styles.chargeLabel}>{c.label}</Text>
-              <Text style={styles.chargeValue}>{c.value}</Text>
+              <Text style={[styles.chargeLabel, { color: colors.textMuted }]}>{c.label}</Text>
+              <Text style={[styles.chargeValue, { color: colors.textMuted }]}>{c.value}</Text>
             </View>
           ))}
           <View style={styles.chargeDivider} />
           <View style={styles.chargeRow}>
-            <Text style={styles.chargeTotal}>Total charged</Text>
-            <Text style={styles.chargeTotalValue}>${total.toFixed(2)}</Text>
+            <Text style={[styles.chargeTotal, { color: colors.text }]}>Total charged</Text>
+            <Text style={[styles.chargeTotalValue, { color: colors.text }]}>${total.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -75,7 +77,7 @@ export default function PorterBoxCollectedScreen() {
             style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => { reset(); router.push("/porter-box-hub"); }}
           >
-            <Text style={styles.secondaryBtnText}>Use Porter Box Again</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.textMuted }]}>Use Porter Box Again</Text>
           </Pressable>
         </View>
       </View>

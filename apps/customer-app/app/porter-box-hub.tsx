@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useStripe } from "@stripe/stripe-react-native";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { PorterHub } from "@/lib/database.types";
 import { DEMO_HUBS } from "@/constants/simulation";
@@ -22,6 +23,7 @@ const HOW_TO = [
 
 export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const store = useBookingStore();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
@@ -60,7 +62,7 @@ export default function PorterBoxHubScreen() {
       const demoOrderId = `demo-order-${Date.now()}`;
       store.setPorterBoxOrder(demoOrderId, demoCode, amountCents);
       store.setSelectedBox(hub.id, hub.name);
-      router.push("/porter-box-handoff");
+      router.push("/porter-box-stored");
       return;
     }
 
@@ -108,7 +110,7 @@ export default function PorterBoxHubScreen() {
 
       store.setPorterBoxOrder(orderId, pickupCode, amountCents);
       store.setSelectedBox(hub.id, hub.name);
-      router.push("/porter-box-handoff");
+      router.push("/porter-box-stored");
     } catch (e) {
       setPaymentLoading(false);
       Alert.alert("Error", e instanceof Error ? e.message : "Something went wrong");
@@ -122,7 +124,7 @@ export default function PorterBoxHubScreen() {
   }
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
@@ -130,9 +132,9 @@ export default function PorterBoxHubScreen() {
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.titleText}>Porter Box</Text>
+          <Text style={[styles.titleText, { color: colors.text }]}>Porter Box</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -159,9 +161,9 @@ export default function PorterBoxHubScreen() {
                 <ActivityIndicator color={Colors.steel} style={{ marginTop: 24 }} />
               ) : activeOrders.length === 0 ? (
                 <View style={styles.emptyOrders}>
-                  <Ionicons name="cube-outline" size={32} color={Colors.textDim} />
-                  <Text style={styles.emptyOrdersTitle}>No active storage</Text>
-                  <Text style={styles.emptyOrdersSub}>
+                  <Ionicons name="cube-outline" size={32} color={colors.textDim} />
+                  <Text style={[styles.emptyOrdersTitle, { color: colors.text }]}>No active storage</Text>
+                  <Text style={[styles.emptyOrdersSub, { color: colors.textMuted }]}>
                     Switch to Drop Off to store items at a nearby Porter Box.
                   </Text>
                 </View>
@@ -173,17 +175,17 @@ export default function PorterBoxHubScreen() {
                         <View style={styles.activeDot} />
                         <Text style={styles.activePillText}>Ready for pickup</Text>
                       </View>
-                      <Text style={styles.activeTimer}>{formatDuration(order.dropped_at)}</Text>
+                      <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(order.dropped_at)}</Text>
                     </View>
-                    <Text style={styles.activeTitle}>Your items are waiting</Text>
-                    <Text style={styles.activeSub}>
+                    <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
+                    <Text style={[styles.activeSub, { color: colors.textMuted }]}>
                       Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
                     </Text>
                     <Pressable
                       style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
                       onPress={() => handleViewPickup(order)}
                     >
-                      <Text style={styles.pickupBtnText}>Get Pickup Code</Text>
+                      <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
                       <Ionicons name="chevron-forward" size={14} color="#fff" />
                     </Pressable>
                   </View>
@@ -197,7 +199,7 @@ export default function PorterBoxHubScreen() {
                   <View style={styles.howNum}>
                     <Text style={styles.howNumText}>{h.step}</Text>
                   </View>
-                  <Text style={styles.howText}>{h.text}</Text>
+                  <Text style={[styles.howText, { color: colors.textMuted }]}>{h.text}</Text>
                 </View>
               ))}
             </>
@@ -208,8 +210,8 @@ export default function PorterBoxHubScreen() {
                 <ActivityIndicator color={Colors.steel} style={{ marginTop: 20 }} />
               ) : hubs.length === 0 ? (
                 <View style={styles.emptyHubs}>
-                  <Ionicons name="cube-outline" size={28} color={Colors.textDim} />
-                  <Text style={styles.emptyHubsText}>No porter boxes available in your area yet.</Text>
+                  <Ionicons name="cube-outline" size={28} color={colors.textDim} />
+                  <Text style={[styles.emptyHubsText, { color: colors.textMuted }]}>No porter boxes available in your area yet.</Text>
                 </View>
               ) : (
                 hubs.map((hub) => (
@@ -223,17 +225,17 @@ export default function PorterBoxHubScreen() {
                       <Ionicons name="cube-outline" size={22} color={Colors.gold} />
                     </View>
                     <View style={styles.locationBody}>
-                      <Text style={styles.locationName}>{hub.name}</Text>
-                      <Text style={styles.locationAddr}>{hub.address}</Text>
+                      <Text style={[styles.locationName, { color: colors.text }]}>{hub.name}</Text>
+                      <Text style={[styles.locationAddr, { color: colors.textMuted }]}>{hub.address}</Text>
                       <View style={styles.locationMeta}>
-                        <Ionicons name="cube-outline" size={12} color={Colors.textDim} />
-                        <Text style={styles.locationMetaText}>{hub.capacity} slots · $10/hr</Text>
+                        <Ionicons name="cube-outline" size={12} color={colors.textDim} />
+                        <Text style={[styles.locationMetaText, { color: colors.textDim }]}>{hub.capacity} slots · $10/hr</Text>
                       </View>
                     </View>
                     {paymentLoading ? (
                       <ActivityIndicator size="small" color={Colors.steel} />
                     ) : (
-                      <Ionicons name="chevron-forward" size={16} color={Colors.textDim} />
+                      <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
                     )}
                   </Pressable>
                 ))
@@ -251,22 +253,22 @@ export default function PorterBoxHubScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalSheet}>
-              <Text style={styles.modalTitle}>How many hours?</Text>
-              <Text style={styles.modalSub}>$10 / hr · pick up anytime</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>How many hours?</Text>
+              <Text style={[styles.modalSub, { color: colors.textMuted }]}>$10 / hr · pick up anytime</Text>
 
               <View style={styles.stepperRow}>
                 <Pressable
                   style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
                   onPress={() => setHours((h) => Math.max(1, h - 1))}
                 >
-                  <Ionicons name="remove" size={20} color={Colors.text} />
+                  <Ionicons name="remove" size={20} color={colors.text} />
                 </Pressable>
                 <Text style={styles.stepperValue}>{hours}</Text>
                 <Pressable
                   style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
                   onPress={() => setHours((h) => Math.min(24, h + 1))}
                 >
-                  <Ionicons name="add" size={20} color={Colors.text} />
+                  <Ionicons name="add" size={20} color={colors.text} />
                 </Pressable>
               </View>
 
@@ -283,7 +285,7 @@ export default function PorterBoxHubScreen() {
               </Pressable>
 
               <Pressable onPress={() => setDurationModalVisible(false)} style={{ marginTop: 4 }}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={[styles.modalCancel, { color: colors.textMuted }]}>Cancel</Text>
               </Pressable>
             </View>
           </View>

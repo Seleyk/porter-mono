@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 
 type SizeKey = "large" | "standard" | "small";
@@ -17,6 +18,7 @@ const SIZES: { id: SizeKey; label: string; desc: string }[] = [
 
 export default function PortDetailsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { itemCounts, specialRequests, itemValueUSD, setItemCounts, setSpecialRequests, setItemValueUSD } = useBookingStore();
   const [counts, setCounts] = useState({ large: itemCounts.large, standard: itemCounts.standard, small: itemCounts.small });
   const [notes, setNotes] = useState(specialRequests);
@@ -32,7 +34,7 @@ export default function PortDetailsScreen() {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
           {/* Top bar */}
@@ -41,15 +43,15 @@ export default function PortDetailsScreen() {
               style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
               onPress={() => router.back()}
             >
-              <Ionicons name="chevron-back" size={18} color={Colors.text} />
+              <Ionicons name="chevron-back" size={18} color={colors.text} />
             </Pressable>
-            <Text style={styles.stepLabel}>2 of 4</Text>
+            <Text style={[styles.stepLabel, { color: colors.textDim }]}>2 of 4</Text>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Heading */}
             <Text style={styles.eyebrow}>Item Details</Text>
-            <Text style={styles.heading}>
+            <Text style={[styles.heading, { color: colors.text }]}>
               How many items{"\n"}
               <Text style={styles.headingItalic}>are we handling?</Text>
             </Text>
@@ -59,8 +61,8 @@ export default function PortDetailsScreen() {
               {SIZES.map((s) => (
                 <View key={s.id} style={styles.card}>
                   <View style={styles.cardBody}>
-                    <Text style={styles.cardLabel}>{s.label}</Text>
-                    <Text style={styles.cardDesc}>{s.desc}</Text>
+                    <Text style={[styles.cardLabel, { color: colors.text }]}>{s.label}</Text>
+                    <Text style={[styles.cardDesc, { color: colors.textMuted }]}>{s.desc}</Text>
                   </View>
                   <View style={styles.stepper}>
                     <Pressable
@@ -74,7 +76,7 @@ export default function PortDetailsScreen() {
                       style={({ pressed }) => [styles.stepBtn, { opacity: pressed ? 0.7 : 1 }]}
                       onPress={() => adjust(s.id, 1)}
                     >
-                      <Ionicons name="add" size={18} color={Colors.text} />
+                      <Ionicons name="add" size={18} color={colors.text} />
                     </Pressable>
                   </View>
                 </View>
@@ -98,11 +100,11 @@ export default function PortDetailsScreen() {
               <TextInput
                 style={styles.valueField}
                 placeholder="Minimum $50"
-                placeholderTextColor={Colors.textDim}
+                placeholderTextColor={colors.textDim}
                 value={itemValue}
                 onChangeText={setItemValue}
                 keyboardType="decimal-pad"
-                selectionColor={Colors.steel}
+                selectionColor={colors.steel}
               />
             </View>
 
@@ -111,12 +113,12 @@ export default function PortDetailsScreen() {
             <TextInput
               style={styles.notes}
               placeholder="Fragile items, oversized dimensions, instructions for your porter…"
-              placeholderTextColor={Colors.textDim}
+              placeholderTextColor={colors.textDim}
               value={notes}
               onChangeText={setNotes}
               multiline
               numberOfLines={4}
-              selectionColor={Colors.steel}
+              selectionColor={colors.steel}
               textAlignVertical="top"
             />
           </ScrollView>

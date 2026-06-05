@@ -69,6 +69,7 @@ interface BookingState {
   setBookingId: (id: string) => void;
   setAssignedDriver: (name: string, initials: string, rating: number) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
+  setPorterBoxCode: (code: string) => void;
   reset: () => void;
 }
 
@@ -119,6 +120,7 @@ export const useBookingStore = create<BookingState>((set) => ({
     set({ assignedDriverName, assignedDriverInitials, assignedDriverRating }),
   setPorterBoxOrder: (porterBoxOrderId, porterBoxCode, porterBoxChargeCents) =>
     set({ porterBoxOrderId, porterBoxCode, porterBoxChargeCents }),
+  setPorterBoxCode: (porterBoxCode) => set({ porterBoxCode }),
   reset: () => set(initialState),
 }));
 

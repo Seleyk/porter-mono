@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import MapboxGL from "@rnmapbox/maps";
 import { DEMO_USER_COORDS, DEMO_DRIVERS, DEMO_FAVORITES, DEMO_RECENTS, DEMO_CURRENT_LOCATION } from "@/constants/simulation";
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const { pickup, setRoute } = useBookingStore();
+  const { colors } = useColors();
   const firstName = profile?.first_name ?? "there";
   const initials = profile
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
@@ -65,7 +67,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bgDeep }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -73,30 +75,30 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.name}>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>{getGreeting()}</Text>
+            <Text style={[styles.name, { color: colors.text }]}>
               {firstName}<Text style={styles.namePeriod}>.</Text>
             </Text>
           </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: colors.card, borderColor: colors.cardBorder, borderWidth: 1 }]}>
+            <Text style={[styles.avatarText, { color: colors.text }]}>{initials}</Text>
           </View>
         </View>
 
         {/* Search bar */}
-        <Pressable style={styles.searchBar} onPress={handleSearchBarTap}>
-          <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
-          <Text style={styles.searchPlaceholder}>Where to?</Text>
-          <View style={styles.nowPill}>
-            <Ionicons name="time-outline" size={13} color={Colors.textSecondary} />
-            <Text style={styles.nowText}>Now</Text>
+        <Pressable style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={handleSearchBarTap}>
+          <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.searchPlaceholder, { color: colors.textSecondary }]}>Where to?</Text>
+          <View style={[styles.nowPill, { backgroundColor: colors.buttonSecondary }]}>
+            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+            <Text style={[styles.nowText, { color: colors.textSecondary }]}>Now</Text>
           </View>
         </Pressable>
 
         {/* Favorites */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionLabel}>FAVORITES</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FAVORITES</Text>
             <Pressable>
               <Text style={styles.sectionAction}>Edit</Text>
             </Pressable>
@@ -107,14 +109,14 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
               onPress={() => handleLocationTap(f.label, f.coords)}
             >
-              <View style={styles.listIconBox}>
+              <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <Ionicons name={f.icon as any} size={18} color={f.iconColor} />
               </View>
               <View style={styles.listText}>
-                <Text style={styles.listTitle}>{f.label}</Text>
-                <Text style={styles.listSub}>{f.sub}</Text>
+                <Text style={[styles.listTitle, { color: colors.text }]}>{f.label}</Text>
+                <Text style={[styles.listSub, { color: colors.textSecondary }]}>{f.sub}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={15} color={Colors.textTertiary} />
+              <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
             </Pressable>
           ))}
         </View>
@@ -122,7 +124,7 @@ export default function HomeScreen() {
         {/* Frequent Destinations */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionLabel}>FREQUENT DESTINATIONS</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FREQUENT DESTINATIONS</Text>
           </View>
           {DEMO_RECENTS.map((r) => (
             <Pressable
@@ -130,12 +132,12 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
               onPress={() => handleLocationTap(r.label, r.coords)}
             >
-              <View style={styles.listIconBox}>
-                <Ionicons name="time-outline" size={18} color={Colors.textSecondary} />
+              <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
               </View>
               <View style={styles.listText}>
-                <Text style={styles.listTitle}>{r.label}</Text>
-                <Text style={styles.listSub}>{r.sub}</Text>
+                <Text style={[styles.listTitle, { color: colors.text }]}>{r.label}</Text>
+                <Text style={[styles.listSub, { color: colors.textSecondary }]}>{r.sub}</Text>
               </View>
             </Pressable>
           ))}
@@ -144,11 +146,11 @@ export default function HomeScreen() {
         {/* Active Porters */}
         <View style={[styles.section, { marginBottom: 0 }]}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionLabel}>ACTIVE PORTERS</Text>
-            <Text style={styles.sectionMeta}>Within 0.6 mi</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ACTIVE PORTERS</Text>
+            <Text style={[styles.sectionMeta, { color: colors.textSecondary }]}>Within 0.6 mi</Text>
           </View>
 
-          <View style={[styles.mapCard, { height: MAP_H }]}>
+          <View style={[styles.mapCard, { height: MAP_H, borderColor: colors.cardBorder }]}>
             <MapboxGL.MapView
               style={{ flex: 1 }}
               styleURL="mapbox://styles/mapbox/dark-v11"
