@@ -62,7 +62,7 @@ function getLuggageSize(counts: { large: number; standard: number; small: number
 
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, bgGradient } = useColors();
+  const { colors, isDark, bgGradient } = useColors();
   const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -128,15 +128,15 @@ export default function DeliveryMethodScreen() {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: "Porter",
         returnURL: "porter://stripe-redirect",
-        style: "alwaysDark",
+        style: isDark ? "alwaysDark" : "alwaysLight",
         applePay: { merchantCountryCode: "US" },
         appearance: {
           colors: {
-            primary: "#6FA3C8",
-            background: "#050B16",
-            componentBackground: "#0B2A4A",
-            componentText: "#F4F6F8",
-            placeholderText: "#F4F6F866",
+            primary: isDark ? "#6FA3C8" : "#4A7FA8",
+            background: isDark ? "#050B16" : "#FFFFFF",
+            componentBackground: isDark ? "#0B2A4A" : "#F4F6F8",
+            componentText: isDark ? "#F4F6F8" : "#0E0F12",
+            placeholderText: isDark ? "#F4F6F866" : "#0E0F1266",
           },
         },
       });
@@ -197,7 +197,7 @@ export default function DeliveryMethodScreen() {
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={18} color={colors.text} />
@@ -210,7 +210,7 @@ export default function DeliveryMethodScreen() {
           <View style={styles.mapCard}>
             <MapboxGL.MapView
               style={{ flex: 1 }}
-              styleURL="mapbox://styles/mapbox/dark-v11"
+              styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
               scrollEnabled={false}
               zoomEnabled={false}
               rotateEnabled={false}
@@ -250,15 +250,15 @@ export default function DeliveryMethodScreen() {
             return (
               <Pressable
                 key={m.id}
-                style={[styles.methodRow, active && styles.methodRowActive]}
+                style={[styles.methodRow, active && styles.methodRowActive, { backgroundColor: isDark ? undefined : (active ? "rgba(74,127,168,0.18)" : "rgba(74,127,168,0.10)"), borderColor: isDark ? undefined : "rgba(74,127,168,0.22)" }]}
                 onPress={() => setMethod(m.id as DeliverySpeed)}
               >
-                <View style={[styles.methodIcon, active && styles.methodIconActive]}>
+                <View style={[styles.methodIcon, { backgroundColor: colors.card, borderColor: colors.cardBorder }, active && styles.methodIconActive]}>
                   <Ionicons name={m.icon} size={18} color={active ? Colors.steel : Colors.textMuted} />
                 </View>
                 <View style={styles.methodBody}>
-                  <Text style={[styles.methodLabel, active && styles.methodLabelActive]}>{m.label}</Text>
-                  <Text style={styles.methodDesc}>{m.desc}</Text>
+                  <Text style={[styles.methodLabel, { color: colors.text }, active && styles.methodLabelActive]}>{m.label}</Text>
+                  <Text style={[styles.methodDesc, { color: colors.textMuted }]}>{m.desc}</Text>
                 </View>
                 <View style={styles.methodRight}>
                   <Text style={[styles.methodPrice, active && styles.methodPriceActive]}>
@@ -274,14 +274,14 @@ export default function DeliveryMethodScreen() {
         <View style={{ flex: 1 }} />
 
         {/* Payment row */}
-        <View style={styles.paymentRow}>
+        <View style={[styles.paymentRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.paymentLeft}>
             <Ionicons name="card-outline" size={16} color={colors.textMuted} />
-            <Text style={styles.paymentText}>
+            <Text style={[styles.paymentText, { color: colors.text }]}>
               {paymentLoading ? "Loading payment…" : "Pay with card"}
             </Text>
           </View>
-          <Text style={styles.paymentTotal}>
+          <Text style={[styles.paymentTotal, { color: colors.text }]}>
             {baseFare > 0 ? `$${tierPrice(method).toFixed(2)}` : "—"}
           </Text>
         </View>
@@ -303,7 +303,7 @@ export default function DeliveryMethodScreen() {
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL="mapbox://styles/mapbox/dark-v11"
+            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
             logoEnabled={false}
             attributionEnabled={false}
           >

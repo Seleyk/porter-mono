@@ -23,7 +23,7 @@ const HOW_TO = [
 
 export default function PorterBoxHubScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, bgGradient } = useColors();
+  const { colors, isDark, bgGradient } = useColors();
   const store = useBookingStore();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
@@ -129,7 +129,7 @@ export default function PorterBoxHubScreen() {
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={18} color={colors.text} />
@@ -139,18 +139,18 @@ export default function PorterBoxHubScreen() {
         </View>
 
         {/* Segmented control */}
-        <View style={styles.segmented}>
+        <View style={[styles.segmented, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <Pressable
             style={[styles.segBtn, tab === "pickup" && styles.segBtnActive]}
             onPress={() => setTab("pickup")}
           >
-            <Text style={[styles.segText, tab === "pickup" && styles.segTextActive]}>Pick Up</Text>
+            <Text style={[styles.segText, { color: colors.textMuted }, tab === "pickup" && styles.segTextActive]}>Pick Up</Text>
           </Pressable>
           <Pressable
             style={[styles.segBtn, tab === "dropoff" && styles.segBtnActive]}
             onPress={() => setTab("dropoff")}
           >
-            <Text style={[styles.segText, tab === "dropoff" && styles.segTextActive]}>Drop Off</Text>
+            <Text style={[styles.segText, { color: colors.textMuted }, tab === "dropoff" && styles.segTextActive]}>Drop Off</Text>
           </Pressable>
         </View>
 
@@ -193,7 +193,7 @@ export default function PorterBoxHubScreen() {
               )}
 
               {/* How to collect */}
-              <Text style={styles.sectionLabel}>HOW TO COLLECT</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textDim }]}>HOW TO COLLECT</Text>
               {HOW_TO.map((h) => (
                 <View key={h.step} style={styles.howRow}>
                   <View style={styles.howNum}>
@@ -205,7 +205,7 @@ export default function PorterBoxHubScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.eyebrow}>Nearby Locations</Text>
+              <Text style={[styles.eyebrow, { color: colors.steel }]}>Nearby Locations</Text>
               {hubsLoading ? (
                 <ActivityIndicator color={Colors.steel} style={{ marginTop: 20 }} />
               ) : hubs.length === 0 ? (
@@ -217,7 +217,7 @@ export default function PorterBoxHubScreen() {
                 hubs.map((hub) => (
                   <Pressable
                     key={hub.id}
-                    style={({ pressed }) => [styles.locationCard, { opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
+                    style={({ pressed }) => [styles.locationCard, { backgroundColor: colors.cardElev, opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
                     onPress={() => { if (!paymentLoading) { setPendingHub(hub); setHours(store.storageHours); setDurationModalVisible(true); } }}
                     disabled={paymentLoading}
                   >
@@ -252,20 +252,20 @@ export default function PorterBoxHubScreen() {
           onRequestClose={() => setDurationModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalSheet}>
+            <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>How many hours?</Text>
               <Text style={[styles.modalSub, { color: colors.textMuted }]}>$10 / hr · pick up anytime</Text>
 
               <View style={styles.stepperRow}>
                 <Pressable
-                  style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  style={({ pressed }) => [styles.stepperBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
                   onPress={() => setHours((h) => Math.max(1, h - 1))}
                 >
                   <Ionicons name="remove" size={20} color={colors.text} />
                 </Pressable>
-                <Text style={styles.stepperValue}>{hours}</Text>
+                <Text style={[styles.stepperValue, { color: colors.text }]}>{hours}</Text>
                 <Pressable
-                  style={({ pressed }) => [styles.stepperBtn, { opacity: pressed ? 0.6 : 1 }]}
+                  style={({ pressed }) => [styles.stepperBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
                   onPress={() => setHours((h) => Math.min(24, h + 1))}
                 >
                   <Ionicons name="add" size={20} color={colors.text} />

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type ItemType } from "@/store/bookingStore";
 
 const TYPES = [
@@ -40,26 +41,27 @@ const TYPES = [
 
 export default function SelectTypeScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, bgGradient } = useColors();
   const { itemType, setItemType } = useBookingStore();
   const [selected, setSelected] = useState<ItemType | null>(itemType);
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.stepLabel}>1 of 4</Text>
+          <Text style={[styles.stepLabel, { color: colors.textDim }]}>1 of 4</Text>
         </View>
 
         {/* Heading */}
         <Text style={styles.eyebrow}>Item Type</Text>
-        <Text style={styles.heading}>
+        <Text style={[styles.heading, { color: colors.text }]}>
           What are you{"\n"}
           <Text style={styles.headingItalic}>sending today?</Text>
         </Text>

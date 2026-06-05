@@ -16,7 +16,7 @@ const BOXES = [
 
 export default function DropoffMethodScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, bgGradient } = useColors();
+  const { colors, isDark, bgGradient } = useColors();
   const { dropoffMethod, selectedBoxId, setDropoffMethod, setSelectedBox } = useBookingStore();
   const [method, setMethod] = useState<DropoffMethod>(dropoffMethod);
   const [selectedBox, setLocalBox] = useState<string | null>(selectedBoxId);
@@ -29,7 +29,7 @@ export default function DropoffMethodScreen() {
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={18} color={colors.text} />
@@ -47,33 +47,33 @@ export default function DropoffMethodScreen() {
         {/* Method cards */}
         <View style={styles.methods}>
           <Pressable
-            style={[styles.methodCard, method === "door" && styles.methodCardActive]}
+            style={[styles.methodCard, method === "door" && styles.methodCardActive, { backgroundColor: isDark ? undefined : (method === "door" ? "rgba(74,127,168,0.18)" : "rgba(74,127,168,0.10)"), borderColor: isDark ? undefined : "rgba(74,127,168,0.22)" }]}
             onPress={() => setMethod("door")}
           >
-            <View style={[styles.methodIcon, method === "door" && styles.methodIconActive]}>
+            <View style={[styles.methodIcon, { backgroundColor: colors.card, borderColor: colors.cardBorder }, method === "door" && styles.methodIconActive]}>
               <Ionicons name="home-outline" size={24} color={method === "door" ? Colors.steel : Colors.textMuted} />
             </View>
             <View style={styles.methodBody}>
-              <Text style={[styles.methodLabel, method === "door" && styles.methodLabelActive]}>Door Handoff</Text>
-              <Text style={styles.methodDesc}>Porter delivers directly to your door, signature confirmed.</Text>
+              <Text style={[styles.methodLabel, { color: colors.text }, method === "door" && styles.methodLabelActive]}>Door Handoff</Text>
+              <Text style={[styles.methodDesc, { color: colors.textMuted }]}>Porter delivers directly to your door, signature confirmed.</Text>
             </View>
-            <View style={[styles.radio, method === "door" && styles.radioActive]}>
+            <View style={[styles.radio, { borderColor: colors.cardBorder }, method === "door" && styles.radioActive]}>
               {method === "door" && <View style={styles.radioDot} />}
             </View>
           </Pressable>
 
           <Pressable
-            style={[styles.methodCard, method === "box" && styles.methodCardActive]}
+            style={[styles.methodCard, method === "box" && styles.methodCardActive, { backgroundColor: isDark ? undefined : (method === "box" ? "rgba(74,127,168,0.18)" : "rgba(74,127,168,0.10)"), borderColor: isDark ? undefined : "rgba(74,127,168,0.22)" }]}
             onPress={() => setMethod("box")}
           >
-            <View style={[styles.methodIcon, method === "box" && styles.methodIconActive]}>
+            <View style={[styles.methodIcon, { backgroundColor: colors.card, borderColor: colors.cardBorder }, method === "box" && styles.methodIconActive]}>
               <Ionicons name="cube-outline" size={24} color={method === "box" ? Colors.gold : Colors.textMuted} />
             </View>
             <View style={styles.methodBody}>
-              <Text style={[styles.methodLabel, method === "box" && styles.methodLabelActive]}>Porter Box</Text>
-              <Text style={styles.methodDesc}>Secured in a climate-controlled locker. Retrieve at your convenience.</Text>
+              <Text style={[styles.methodLabel, { color: colors.text }, method === "door" && styles.methodLabelActive]}>Porter Box</Text>
+              <Text style={[styles.methodDesc, { color: colors.textMuted }]}>Secured in a climate-controlled locker. Retrieve at your convenience.</Text>
             </View>
-            <View style={[styles.radio, method === "box" && styles.radioActiveGold]}>
+            <View style={[styles.radio, { borderColor: colors.cardBorder }, method === "box" && styles.radioActiveGold]}>
               {method === "box" && <View style={styles.radioDotGold} />}
             </View>
           </Pressable>
@@ -82,7 +82,7 @@ export default function DropoffMethodScreen() {
         {/* Box picker (shown when Porter Box selected) */}
         {method === "box" && (
           <View style={styles.boxPicker}>
-            <Text style={styles.boxPickerLabel}>NEARBY LOCATIONS</Text>
+            <Text style={[styles.boxPickerLabel, { color: colors.textSecondary }]}>NEARBY LOCATIONS</Text>
             {BOXES.map((b) => (
               <Pressable
                 key={b.id}
@@ -90,10 +90,10 @@ export default function DropoffMethodScreen() {
                 onPress={() => { setLocalBox(b.id); }}
               >
                 <View style={styles.boxInfo}>
-                  <Text style={styles.boxName}>{b.name}</Text>
-                  <Text style={styles.boxMeta}>{b.dist} · {b.slots} slots available</Text>
+                  <Text style={[styles.boxName, { color: colors.text }]}>{b.name}</Text>
+                  <Text style={[styles.boxMeta, { color: colors.textMuted }]}>{b.dist} · {b.slots} slots available</Text>
                 </View>
-                <View style={[styles.radio, selectedBox === b.id && styles.radioActiveGold]}>
+                <View style={[styles.radio, { borderColor: colors.cardBorder }, selectedBox === b.id && styles.radioActiveGold]}>
                   {selectedBox === b.id && <View style={styles.radioDotGold} />}
                 </View>
               </Pressable>

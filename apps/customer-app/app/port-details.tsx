@@ -18,7 +18,7 @@ const SIZES: { id: SizeKey; label: string; desc: string }[] = [
 
 export default function PortDetailsScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, bgGradient } = useColors();
+  const { colors, isDark, bgGradient } = useColors();
   const { itemCounts, specialRequests, itemValueUSD, setItemCounts, setSpecialRequests, setItemValueUSD } = useBookingStore();
   const [counts, setCounts] = useState({ large: itemCounts.large, standard: itemCounts.standard, small: itemCounts.small });
   const [notes, setNotes] = useState(specialRequests);
@@ -40,7 +40,7 @@ export default function PortDetailsScreen() {
           {/* Top bar */}
           <View style={styles.topBar}>
             <Pressable
-              style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
               onPress={() => router.back()}
             >
               <Ionicons name="chevron-back" size={18} color={colors.text} />
@@ -59,21 +59,21 @@ export default function PortDetailsScreen() {
             {/* Stepper cards */}
             <View style={styles.cards}>
               {SIZES.map((s) => (
-                <View key={s.id} style={styles.card}>
+                <View key={s.id} style={[styles.card, { backgroundColor: isDark ? undefined : "rgba(74,127,168,0.12)", borderColor: isDark ? undefined : "rgba(74,127,168,0.22)" }]}>
                   <View style={styles.cardBody}>
                     <Text style={[styles.cardLabel, { color: colors.text }]}>{s.label}</Text>
                     <Text style={[styles.cardDesc, { color: colors.textMuted }]}>{s.desc}</Text>
                   </View>
                   <View style={styles.stepper}>
                     <Pressable
-                      style={({ pressed }) => [styles.stepBtn, { opacity: pressed ? 0.7 : 1 }]}
+                      style={({ pressed }) => [styles.stepBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.7 : 1 }]}
                       onPress={() => adjust(s.id, -1)}
                     >
-                      <Ionicons name="remove" size={18} color={counts[s.id] > 0 ? Colors.text : Colors.textDim} />
+                      <Ionicons name="remove" size={18} color={counts[s.id] > 0 ? colors.text : colors.textDim} />
                     </Pressable>
-                    <Text style={styles.stepCount}>{counts[s.id] ?? 0}</Text>
+                    <Text style={[styles.stepCount, { color: colors.text }]}>{counts[s.id] ?? 0}</Text>
                     <Pressable
-                      style={({ pressed }) => [styles.stepBtn, { opacity: pressed ? 0.7 : 1 }]}
+                      style={({ pressed }) => [styles.stepBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.7 : 1 }]}
                       onPress={() => adjust(s.id, 1)}
                     >
                       <Ionicons name="add" size={18} color={colors.text} />
@@ -87,18 +87,18 @@ export default function PortDetailsScreen() {
             {total > 0 && (
               <View style={styles.totalRow}>
                 <Ionicons name="checkmark-circle-outline" size={16} color={Colors.steel} />
-                <Text style={styles.totalText}>
+                <Text style={[styles.totalText, { color: colors.textMuted }]}>
                   {total} item{total !== 1 ? "s" : ""} selected
                 </Text>
               </View>
             )}
 
             {/* Declared item value */}
-            <Text style={styles.notesLabel}>Declared Item Value</Text>
-            <View style={styles.valueRow}>
-              <Text style={styles.valuePrefix}>$</Text>
+            <Text style={[styles.notesLabel, { color: colors.textMuted }]}>Declared Item Value</Text>
+            <View style={[styles.valueRow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+              <Text style={[styles.valuePrefix, { color: colors.textMuted }]}>$</Text>
               <TextInput
-                style={styles.valueField}
+                style={[styles.valueField, { color: colors.text }]}
                 placeholder="Minimum $50"
                 placeholderTextColor={colors.textDim}
                 value={itemValue}
@@ -109,9 +109,9 @@ export default function PortDetailsScreen() {
             </View>
 
             {/* Special requests */}
-            <Text style={styles.notesLabel}>Special Requests</Text>
+            <Text style={[styles.notesLabel, { color: colors.textMuted }]}>Special Requests</Text>
             <TextInput
-              style={styles.notes}
+              style={[styles.notes, { backgroundColor: colors.card, borderColor: colors.cardBorder, color: colors.text }]}
               placeholder="Fragile items, oversized dimensions, instructions for your porter…"
               placeholderTextColor={colors.textDim}
               value={notes}

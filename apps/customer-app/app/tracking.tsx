@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
+import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { subscribeToBooking } from "@/services/booking";
 import { DEMO_USER_COORDS } from "@/constants/simulation";
@@ -30,6 +31,7 @@ const STATUS_TO_STAGE: Record<string, number> = {
 
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark, bgGradient } = useColors();
   const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords,
     assignedDriverName, assignedDriverInitials, assignedDriverRating,
     dropoffMethod, porterBoxCode, selectedBoxName } = useBookingStore();
@@ -117,19 +119,19 @@ export default function TrackingScreen() {
   ];
 
   return (
-    <LinearGradient colors={["#143257", "#0A1F3A", "#050B16"]} style={{ flex: 1 }}>
+    <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
       <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }]}>
         {/* Top bar */}
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.backBtn, { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={18} color={Colors.text} />
+            <Ionicons name="chevron-back" size={18} color={colors.text} />
           </Pressable>
-          <Text style={styles.titleText}>Live Tracking</Text>
+          <Text style={[styles.titleText, { color: colors.text }]}>Live Tracking</Text>
           <Pressable style={styles.helpBtn}>
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.text} />
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.text} />
           </Pressable>
         </View>
 
@@ -139,7 +141,7 @@ export default function TrackingScreen() {
             <View style={styles.mapCard}>
               <MapboxGL.MapView
                 style={{ flex: 1 }}
-                styleURL="mapbox://styles/mapbox/dark-v11"
+                styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
                 scrollEnabled={false}
                 zoomEnabled={false}
                 rotateEnabled={false}
@@ -188,7 +190,7 @@ export default function TrackingScreen() {
 
               {/* Expand hint */}
               <View style={styles.expandHint}>
-                <Ionicons name="expand-outline" size={13} color={Colors.text} />
+                <Ionicons name="expand-outline" size={13} color={colors.text} />
                 <Text style={styles.expandHintText}>Tap to expand</Text>
               </View>
             </View>
@@ -198,26 +200,26 @@ export default function TrackingScreen() {
           <View style={styles.stageBar}>
             {STAGES.map((s, i) => (
               <View key={s.id} style={styles.stageItem}>
-                <View style={[styles.stageCircle, i <= stageIdx && styles.stageCircleActive]}>
+                <View style={[styles.stageCircle, { backgroundColor: colors.card, borderColor: colors.cardBorder }, i <= stageIdx && styles.stageCircleActive]}>
                   <Ionicons name={s.icon} size={13} color={i <= stageIdx ? "#fff" : Colors.textDim} />
                 </View>
                 <Text style={[styles.stageLabel, i <= stageIdx && styles.stageLabelActive]}>{s.label}</Text>
                 {i < STAGES.length - 1 && (
-                  <View style={[styles.stageLine, i < stageIdx && styles.stageLineActive]} />
+                  <View style={[styles.stageLine, { backgroundColor: colors.divider }, i < stageIdx && styles.stageLineActive]} />
                 )}
               </View>
             ))}
           </View>
 
           {/* Status card */}
-          <View style={styles.statusCard}>
+          <View style={[styles.statusCard, { backgroundColor: colors.cardElev, borderColor: colors.cardElevBorder }]}>
             <View style={styles.statusRow}>
               <View style={styles.statusIconWrap}>
                 <Ionicons name={stage.icon} size={20} color={Colors.steel} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.statusLabel}>{stage.label}</Text>
-                <Text style={styles.statusEta}>
+                <Text style={[styles.statusLabel, { color: colors.text }]}>{stage.label}</Text>
+                <Text style={[styles.statusEta, { color: colors.textMuted }]}>
                   Estimated arrival in{" "}
                   <Text style={styles.statusEtaNum}>
                     {stageIdx >= 4 ? "delivered" : `${Math.max(1, 27 - stageIdx * 7)} min`}
@@ -252,43 +254,43 @@ export default function TrackingScreen() {
           )}
 
           {/* Porter card */}
-          <View style={styles.porterCard}>
+          <View style={[styles.porterCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.porterAvatar}>
               <Text style={styles.porterAvatarText}>
                 {assignedDriverInitials ?? "P"}
               </Text>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.porterName}>{assignedDriverName ?? "Your Porter"}</Text>
+              <Text style={[styles.porterName, { color: colors.text }]}>{assignedDriverName ?? "Your Porter"}</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={13} color={Colors.gold} />
-                <Text style={styles.ratingText}>
+                <Text style={[styles.ratingText, { color: colors.textMuted }]}>
                   {assignedDriverRating?.toFixed(2) ?? "4.98"} · Identity verified
                 </Text>
               </View>
             </View>
             <View style={styles.porterActions}>
-              <Pressable style={styles.porterActionBtn}>
-                <Ionicons name="call-outline" size={18} color={Colors.text} />
+              <Pressable style={[styles.porterActionBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder }]}>
+                <Ionicons name="call-outline" size={18} color={colors.text} />
               </Pressable>
-              <Pressable style={styles.porterActionBtn}>
-                <Ionicons name="chatbubble-outline" size={18} color={Colors.text} />
+              <Pressable style={[styles.porterActionBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder }]}>
+                <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
               </Pressable>
             </View>
           </View>
 
           {/* Route stops */}
-          <View style={styles.routeCard}>
-            <Text style={styles.routeLabel}>ROUTE</Text>
+          <View style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.routeLabel, { color: colors.textDim }]}>ROUTE</Text>
             {stops.map((s, i) => (
               <View key={i} style={styles.stopRow}>
                 <View style={styles.stopDotCol}>
-                  <View style={[styles.stopDot, s.done && styles.stopDotDone]} />
-                  {i < stops.length - 1 && <View style={styles.stopLine} />}
+                  <View style={[styles.stopDot, { backgroundColor: colors.card, borderColor: colors.cardBorder }, s.done && styles.stopDotDone]} />
+                  {i < stops.length - 1 && <View style={[styles.stopLine, { backgroundColor: colors.divider }]} />}
                 </View>
                 <View style={styles.stopBody}>
-                  <Text style={[styles.stopLabel, s.done && styles.stopLabelDone]} numberOfLines={1}>{s.label}</Text>
-                  <Text style={styles.stopSub}>{s.sub}</Text>
+                  <Text style={[styles.stopLabel, { color: colors.textMuted }, s.done && styles.stopLabelDone, s.done && { color: colors.text }]} numberOfLines={1}>{s.label}</Text>
+                  <Text style={[styles.stopSub, { color: colors.textMuted }]}>{s.sub}</Text>
                 </View>
               </View>
             ))}
@@ -312,7 +314,7 @@ export default function TrackingScreen() {
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL="mapbox://styles/mapbox/dark-v11"
+            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
             logoEnabled={false}
             attributionEnabled={false}
           >
@@ -355,7 +357,7 @@ export default function TrackingScreen() {
             style={({ pressed }) => [styles.mapCloseBtn, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => setMapExpanded(false)}
           >
-            <Ionicons name="close" size={20} color={Colors.text} />
+            <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
         </View>
       </Modal>
