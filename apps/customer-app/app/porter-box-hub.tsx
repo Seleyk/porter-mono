@@ -13,6 +13,7 @@ import { DEMO_HUBS } from "@/constants/simulation";
 import { useBookingStore, type LocalPorterBoxSession } from "@/store/bookingStore";
 import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
 import { getBoxStorageFare } from "@/services/porterFare";
+import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 const HOW_TO = [
   { step: "1", text: "Select a nearby Porter Box location." },
@@ -186,8 +187,9 @@ export default function PorterBoxHubScreen() {
                 </View>
               ) : (
                 <>
-                  {localSessions.map((session) => (
-                    <View key={session.id} style={styles.activeCard}>
+                  {localSessions.map((session, i) => (
+                    <FadeSlideIn key={session.id} delay={i * 60}>
+                      <View style={styles.activeCard}>
                       <View style={styles.activeCardHeader}>
                         <View style={styles.activePill}>
                           <View style={styles.activeDot} />
@@ -207,28 +209,31 @@ export default function PorterBoxHubScreen() {
                         <Ionicons name="chevron-forward" size={14} color="#fff" />
                       </Pressable>
                     </View>
+                    </FadeSlideIn>
                   ))}
-                  {activeOrders.map((order) => (
-                    <View key={order.id} style={styles.activeCard}>
-                      <View style={styles.activeCardHeader}>
-                        <View style={styles.activePill}>
-                          <View style={styles.activeDot} />
-                          <Text style={styles.activePillText}>Ready for pickup</Text>
+                  {activeOrders.map((order, i) => (
+                    <FadeSlideIn key={order.id} delay={(localSessions.length + i) * 60}>
+                      <View style={styles.activeCard}>
+                        <View style={styles.activeCardHeader}>
+                          <View style={styles.activePill}>
+                            <View style={styles.activeDot} />
+                            <Text style={styles.activePillText}>Ready for pickup</Text>
+                          </View>
+                          <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(order.dropped_at)}</Text>
                         </View>
-                        <Text style={[styles.activeTimer, { color: colors.textMuted }]}>{formatDuration(order.dropped_at)}</Text>
+                        <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
+                        <Text style={[styles.activeSub, { color: colors.textMuted }]}>
+                          Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
+                        </Text>
+                        <Pressable
+                          style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
+                          onPress={() => handleViewPickup(order)}
+                        >
+                          <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
+                          <Ionicons name="chevron-forward" size={14} color="#fff" />
+                        </Pressable>
                       </View>
-                      <Text style={[styles.activeTitle, { color: colors.text }]}>Your items are waiting</Text>
-                      <Text style={[styles.activeSub, { color: colors.textMuted }]}>
-                        Porter Box · {order.porter_hubs?.name ?? "Hub"} · {order.porter_hubs?.address ?? ""}
-                      </Text>
-                      <Pressable
-                        style={({ pressed }) => [styles.pickupBtn, { opacity: pressed ? 0.85 : 1 }]}
-                        onPress={() => handleViewPickup(order)}
-                      >
-                        <Text style={[styles.pickupBtnText, { color: colors.text }]}>Get Pickup Code</Text>
-                        <Ionicons name="chevron-forward" size={14} color="#fff" />
-                      </Pressable>
-                    </View>
+                    </FadeSlideIn>
                   ))}
                 </>
               )}
@@ -255,9 +260,9 @@ export default function PorterBoxHubScreen() {
                   <Text style={[styles.emptyHubsText, { color: colors.textMuted }]}>No porter boxes available in your area yet.</Text>
                 </View>
               ) : (
-                hubs.map((hub) => (
+                hubs.map((hub, i) => (
+                  <FadeSlideIn key={hub.id} delay={i * 60}>
                   <Pressable
-                    key={hub.id}
                     style={({ pressed }) => [styles.locationCard, { backgroundColor: colors.cardElev, opacity: paymentLoading ? 0.5 : pressed ? 0.85 : 1 }]}
                     onPress={() => { if (!paymentLoading) { setPendingHub(hub); setHours(store.storageHours); setDurationModalVisible(true); } }}
                     disabled={paymentLoading}
@@ -279,6 +284,7 @@ export default function PorterBoxHubScreen() {
                       <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
                     )}
                   </Pressable>
+                  </FadeSlideIn>
                 ))
               )}
             </>

@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type ItemType } from "@/store/bookingStore";
+import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 const TYPES = [
   {
@@ -71,45 +72,46 @@ export default function SelectTypeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.cards}
         >
-          {TYPES.map((t) => {
+          {TYPES.map((t, i) => {
             const active = selected === t.id;
             return (
-              <Pressable
-                key={t.id}
-                style={({ pressed }) => [
-                  styles.card,
-                  active && styles.cardActive,
-                  { opacity: pressed ? 0.88 : 1 },
-                ]}
-                onPress={() => setSelected(t.id as ItemType)}
-              >
-                <ImageBackground
-                  source={t.image}
-                  style={styles.cardBg}
-                  resizeMode="cover"
+              <FadeSlideIn key={t.id} delay={i * 60}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.card,
+                    active && styles.cardActive,
+                    { opacity: pressed ? 0.88 : 1 },
+                  ]}
+                  onPress={() => setSelected(t.id as ItemType)}
                 >
-                  <LinearGradient
-                    colors={["rgba(10,31,58,0.55)", "rgba(5,11,22,0.88)"]}
-                    style={styles.cardGradient}
+                  <ImageBackground
+                    source={t.image}
+                    style={styles.cardBg}
+                    resizeMode="cover"
                   >
-                    {/* Top row: icon + radio */}
-                    <View style={styles.cardTop}>
-                      <View style={[styles.iconBox, active && styles.iconBoxActive]}>
-                        <Ionicons name={t.icon} size={22} color={active ? Colors.steel : Colors.textMuted} />
+                    <LinearGradient
+                      colors={["rgba(10,31,58,0.55)", "rgba(5,11,22,0.88)"]}
+                      style={styles.cardGradient}
+                    >
+                      {/* Top row: icon + radio */}
+                      <View style={styles.cardTop}>
+                        <View style={[styles.iconBox, active && styles.iconBoxActive]}>
+                          <Ionicons name={t.icon} size={22} color={active ? Colors.steel : Colors.textMuted} />
+                        </View>
+                        <View style={[styles.radio, active && styles.radioActive]}>
+                          {active && <View style={styles.radioDot} />}
+                        </View>
                       </View>
-                      <View style={[styles.radio, active && styles.radioActive]}>
-                        {active && <View style={styles.radioDot} />}
-                      </View>
-                    </View>
 
-                    {/* Bottom: label + desc */}
-                    <View style={styles.cardBody}>
-                      <Text style={[styles.cardLabel, active && styles.cardLabelActive]}>{t.label}</Text>
-                      <Text style={styles.cardDesc}>{t.desc}</Text>
-                    </View>
-                  </LinearGradient>
-                </ImageBackground>
-              </Pressable>
+                      {/* Bottom: label + desc */}
+                      <View style={styles.cardBody}>
+                        <Text style={[styles.cardLabel, active && styles.cardLabelActive]}>{t.label}</Text>
+                        <Text style={styles.cardDesc}>{t.desc}</Text>
+                      </View>
+                    </LinearGradient>
+                  </ImageBackground>
+                </Pressable>
+              </FadeSlideIn>
             );
           })}
         </ScrollView>

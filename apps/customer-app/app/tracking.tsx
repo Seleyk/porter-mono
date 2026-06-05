@@ -46,8 +46,13 @@ export default function TrackingScreen() {
   const pickupCoord: [number, number] = [pickupLng, pickupLat];
   const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
 
+  const driverStart: [number, number] = [pickupLng + 0.008, pickupLat + 0.004];
+
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
-  const [driverCoord, setDriverCoord] = useState<[number, number]>([pickupLng + 0.008, pickupLat + 0.004]);
+  const [porterToPickupCoords, setPorterToPickupCoords] = useState<[number, number][]>([driverStart, pickupCoord]);
+  const [porterEtaMs, setPorterEtaMs] = useState(0);
+  const [transitEtaMs, setTransitEtaMs] = useState(0);
+  const [driverCoord, setDriverCoord] = useState<[number, number]>(driverStart);
 
   const camNE: [number, number] = [
     Math.max(pickupLng, dropoffLng) + 0.015,
@@ -58,40 +63,49 @@ export default function TrackingScreen() {
     Math.min(pickupLat, dropoffLat) - 0.015,
   ];
 
-  // Fetch road-following route once on mount
+  // Fetch both route legs on mount
   useEffect(() => {
-    fetchRoute(pickupCoord, dropoffCoord).then(({ coords }) => setRouteCoords(coords));
+    Promise.all([
+      fetchRoute(driverStart, pickupCoord),
+      fetchRoute(pickupCoord, dropoffCoord),
+    ]).then(([porterLeg, deliveryLeg]) => {
+      setPorterToPickupCoords(porterLeg.coords);
+      setPorterEtaMs(Math.round(porterLeg.durationMinutes * 60 * 1000));
+      setRouteCoords(deliveryLeg.coords);
+      setTransitEtaMs(Math.round(deliveryLeg.durationMinutes * 60 * 1000));
+    });
   }, []);
 
-  // Drive the P badge — static positions for stages 0-2 and 4, road-following animation for stage 3
+  // Drive the P badge along real route geometry at realistic speed
   useEffect(() => {
-    if (stageIdx === 0) { setDriverCoord([pickupLng + 0.008, pickupLat + 0.004]); return; }
-    if (stageIdx === 1) { setDriverCoord([pickupLng + 0.003, pickupLat + 0.001]); return; }
+    if (stageIdx === 0) { setDriverCoord(driverStart); return; }
     if (stageIdx === 2) { setDriverCoord(pickupCoord); return; }
     if (stageIdx === 4) { setDriverCoord(dropoffCoord); return; }
 
-    // Stage 3: step through routeCoords, ~10s total
-    if (routeCoords.length < 2) { setDriverCoord(pickupCoord); return; }
+    const [coords, etaMs] =
+      stageIdx === 1
+        ? [porterToPickupCoords, porterEtaMs]
+        : [routeCoords, transitEtaMs];
+
+    if (coords.length < 2 || etaMs === 0) return;
     let step = 0;
-    const intervalMs = Math.max(50, 10_000 / routeCoords.length);
+    const intervalMs = Math.max(500, etaMs / coords.length);
     const id = setInterval(() => {
       step++;
-      if (step >= routeCoords.length) { clearInterval(id); return; }
-      setDriverCoord(routeCoords[step]);
+      if (step >= coords.length) { clearInterval(id); return; }
+      setDriverCoord(coords[step]);
     }, intervalMs);
     return () => clearInterval(id);
-  }, [stageIdx, routeCoords]);
+  }, [stageIdx, porterToPickupCoords, routeCoords, porterEtaMs, transitEtaMs]);
 
-  // Auto-advance simulation — local timers, no Supabase writes needed
+  // Stage auto-advance — fires when stage or ETAs change (ETAs arrive async from Mapbox)
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setStageIdx(1), 4_000),
-      setTimeout(() => setStageIdx(2), 10_000),
-      setTimeout(() => setStageIdx(3), 18_000),
-      setTimeout(() => setStageIdx(4), 28_000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    if (porterEtaMs === 0 || transitEtaMs === 0) return;
+    const STAGE_DURATIONS = [5_000, porterEtaMs, 15_000, transitEtaMs];
+    if (stageIdx >= STAGE_DURATIONS.length) return;
+    const t = setTimeout(() => setStageIdx((s) => s + 1), STAGE_DURATIONS[stageIdx]);
+    return () => clearTimeout(t);
+  }, [stageIdx, porterEtaMs, transitEtaMs]);
 
   // Real-time override — real porter app updates take precedence over simulation
   useEffect(() => {
@@ -105,15 +119,18 @@ export default function TrackingScreen() {
 
   const stage = STAGES[stageIdx];
 
+  const transitEtaMin = Math.round(transitEtaMs / 60000) || "—";
+  const porterEtaMin = Math.round(porterEtaMs / 60000) || "—";
+
   const stops = [
     {
       label: pickup || "Pickup location",
-      sub: stageIdx >= 2 ? "Pickup · Arrived" : "Pickup · En route",
+      sub: stageIdx >= 2 ? "Pickup · Arrived" : `Pickup · ~${porterEtaMin} min`,
       done: stageIdx >= 2,
     },
     {
       label: dropoff || "Drop-off location",
-      sub: stageIdx >= 4 ? "Drop-off · Delivered" : "Drop-off · ETA ~27 min",
+      sub: stageIdx >= 4 ? "Drop-off · Delivered" : `Drop-off · ~${transitEtaMin} min`,
       done: stageIdx >= 4,
     },
   ];
@@ -220,10 +237,11 @@ export default function TrackingScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.statusLabel, { color: colors.text }]}>{stage.label}</Text>
                 <Text style={[styles.statusEta, { color: colors.textMuted }]}>
-                  Estimated arrival in{" "}
-                  <Text style={styles.statusEtaNum}>
-                    {stageIdx >= 4 ? "delivered" : `${Math.max(1, 27 - stageIdx * 7)} min`}
-                  </Text>
+                  {stageIdx === 0 && "Connecting with your porter"}
+                  {stageIdx === 1 && <><Text>Porter arriving in </Text><Text style={styles.statusEtaNum}>~{porterEtaMin} min</Text></>}
+                  {stageIdx === 2 && "Collecting your items"}
+                  {stageIdx === 3 && <><Text>Delivery in </Text><Text style={styles.statusEtaNum}>~{transitEtaMin} min</Text></>}
+                  {stageIdx >= 4 && "Delivered"}
                 </Text>
               </View>
               {stageIdx < 4 && (

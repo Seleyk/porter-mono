@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import MapboxGL from "@rnmapbox/maps";
 import { DEMO_USER_COORDS, DEMO_DRIVERS, DEMO_FAVORITES, DEMO_RECENTS, DEMO_CURRENT_LOCATION } from "@/constants/simulation";
 import { useBookingStore } from "@/store/bookingStore";
+import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -31,7 +32,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const { pickup, setRoute } = useBookingStore();
-  const { colors } = useColors();
+  const { colors, isDark } = useColors();
   const firstName = profile?.first_name ?? "there";
   const initials = profile
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
@@ -103,21 +104,22 @@ export default function HomeScreen() {
               <Text style={styles.sectionAction}>Edit</Text>
             </Pressable>
           </View>
-          {DEMO_FAVORITES.map((f) => (
-            <Pressable
-              key={f.label}
-              style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => handleLocationTap(f.label, f.coords)}
-            >
-              <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name={f.icon as any} size={18} color={f.iconColor} />
-              </View>
-              <View style={styles.listText}>
-                <Text style={[styles.listTitle, { color: colors.text }]}>{f.label}</Text>
-                <Text style={[styles.listSub, { color: colors.textSecondary }]}>{f.sub}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
-            </Pressable>
+          {DEMO_FAVORITES.map((f, i) => (
+            <FadeSlideIn key={f.label} delay={i * 60}>
+              <Pressable
+                style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => handleLocationTap(f.label, f.coords)}
+              >
+                <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <Ionicons name={f.icon as any} size={18} color={f.iconColor} />
+                </View>
+                <View style={styles.listText}>
+                  <Text style={[styles.listTitle, { color: colors.text }]}>{f.label}</Text>
+                  <Text style={[styles.listSub, { color: colors.textSecondary }]}>{f.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={15} color={colors.textTertiary} />
+              </Pressable>
+            </FadeSlideIn>
           ))}
         </View>
 
@@ -126,20 +128,21 @@ export default function HomeScreen() {
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FREQUENT DESTINATIONS</Text>
           </View>
-          {DEMO_RECENTS.map((r) => (
-            <Pressable
-              key={r.label}
-              style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => handleLocationTap(r.label, r.coords)}
-            >
-              <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
-              </View>
-              <View style={styles.listText}>
-                <Text style={[styles.listTitle, { color: colors.text }]}>{r.label}</Text>
-                <Text style={[styles.listSub, { color: colors.textSecondary }]}>{r.sub}</Text>
-              </View>
-            </Pressable>
+          {DEMO_RECENTS.map((r, i) => (
+            <FadeSlideIn key={r.label} delay={i * 60}>
+              <Pressable
+                style={({ pressed }) => [styles.listRow, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => handleLocationTap(r.label, r.coords)}
+              >
+                <View style={[styles.listIconBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                </View>
+                <View style={styles.listText}>
+                  <Text style={[styles.listTitle, { color: colors.text }]}>{r.label}</Text>
+                  <Text style={[styles.listSub, { color: colors.textSecondary }]}>{r.sub}</Text>
+                </View>
+              </Pressable>
+            </FadeSlideIn>
           ))}
         </View>
 
@@ -153,7 +156,7 @@ export default function HomeScreen() {
           <View style={[styles.mapCard, { height: MAP_H, borderColor: colors.cardBorder }]}>
             <MapboxGL.MapView
               style={{ flex: 1 }}
-              styleURL="mapbox://styles/mapbox/dark-v11"
+              styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
               scrollEnabled={false}
               zoomEnabled={false}
               rotateEnabled={false}
@@ -212,10 +215,10 @@ export default function HomeScreen() {
 
       {/* Full-screen Active Porters modal */}
       <Modal visible={mapExpanded} animationType="slide" statusBarTranslucent>
-        <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL="mapbox://styles/mapbox/dark-v11"
+            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
             logoEnabled={false}
             attributionEnabled={false}
           >

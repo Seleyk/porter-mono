@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { getCustomerBookings } from "@/services/booking";
 import { ServiceRequest } from "@/lib/database.types";
+import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,14 +35,14 @@ function statusLabel(status: string): string {
   }
 }
 
-function statusColor(status: string): string {
+function statusColor(status: string, colors: ReturnType<typeof useColors>["colors"]): string {
   switch (status) {
     case "pending":
     case "matched":   return Colors.steel;
     case "accepted":
     case "picked_up": return Colors.gold;
     case "completed": return Colors.evergreen;
-    default:          return Colors.textDim;
+    default:          return colors.textDim;
   }
 }
 
@@ -83,7 +84,7 @@ export default function PortsScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.eyebrow}>Activity</Text>
-              <Text style={styles.heading}>
+              <Text style={[styles.heading, { color: colors.text }]}>
                 Your porter{"\n"}
                 <Text style={styles.headingItalic}>history.</Text>
               </Text>
@@ -106,15 +107,15 @@ export default function PortsScreen() {
           <>
             {/* ── Active ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>ACTIVE</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ACTIVE</Text>
 
               {active.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <View style={styles.emptyIconWrap}>
-                    <Ionicons name="navigate-outline" size={28} color={Colors.textDim} />
+                <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <View style={[styles.emptyIconWrap, { backgroundColor: colors.card }]}>
+                    <Ionicons name="navigate-outline" size={28} color={colors.textDim} />
                   </View>
-                  <Text style={styles.emptyTitle}>No active bookings</Text>
-                  <Text style={styles.emptyDesc}>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>No active bookings</Text>
+                  <Text style={[styles.emptyDesc, { color: colors.textMuted }]}>
                     Book a delivery or Porter Box and it will appear here in real time.
                   </Text>
                   <Pressable
@@ -126,57 +127,58 @@ export default function PortsScreen() {
                   </Pressable>
                 </View>
               ) : (
-                active.map((b) =>
+                active.map((b, i) =>
                   isBox(b.special_instructions)
-                    ? <ActiveBoxCard key={b.id} box={b} />
-                    : <ActiveDeliveryCard key={b.id} booking={b} />
+                    ? <FadeSlideIn key={b.id} delay={Math.min(i, 5) * 60}><ActiveBoxCard box={b} /></FadeSlideIn>
+                    : <FadeSlideIn key={b.id} delay={Math.min(i, 5) * 60}><ActiveDeliveryCard booking={b} /></FadeSlideIn>
                 )
               )}
             </View>
 
             {/* ── Past ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>PAST</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PAST</Text>
 
               {past.length === 0 ? (
-                <Text style={styles.pastEmpty}>No past bookings yet.</Text>
+                <Text style={[styles.pastEmpty, { color: colors.textDim }]}>No past bookings yet.</Text>
               ) : (
-                <View style={styles.pastCard}>
+                <View style={[styles.pastCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   {past.map((b, i) => (
-                    <View
-                      key={b.id}
-                      style={[styles.pastRow, i < past.length - 1 && styles.pastRowDivider]}
-                    >
-                      <View style={styles.pastIconWrap}>
-                        <Ionicons
-                          name={isBox(b.special_instructions) ? "cube-outline" : "car-outline"}
-                          size={18}
-                          color={Colors.textDim}
-                        />
-                      </View>
-                      <View style={styles.pastInfo}>
-                        <Text style={styles.pastHub} numberOfLines={1}>
-                          {isBox(b.special_instructions)
-                            ? parseHub(b.special_instructions)
-                            : b.pickup_address ?? "Pickup"}
-                        </Text>
-                        <Text style={styles.pastDate}>
-                          {isBox(b.special_instructions)
-                            ? formatDate(b.created_at)
-                            : `→ ${b.dropoff_address ?? "Dropoff"} · ${formatDate(b.created_at)}`}
-                        </Text>
-                      </View>
-                      <View style={styles.pastRight}>
-                        {b.total_price != null && (
-                          <Text style={styles.pastPrice}>${b.total_price}</Text>
-                        )}
-                        <View style={[styles.statusPill, { borderColor: statusColor(b.status) + "40" }]}>
-                          <Text style={[styles.statusText, { color: statusColor(b.status) }]}>
-                            {statusLabel(b.status)}
+                    <FadeSlideIn key={b.id} delay={Math.min(i, 5) * 60}>
+                      <View
+                        style={[styles.pastRow, i < past.length - 1 && styles.pastRowDivider, i < past.length - 1 && { borderBottomColor: colors.cardBorder }]}
+                      >
+                        <View style={[styles.pastIconWrap, { backgroundColor: colors.buttonSecondary }]}>
+                          <Ionicons
+                            name={isBox(b.special_instructions) ? "cube-outline" : "car-outline"}
+                            size={18}
+                            color={colors.textDim}
+                          />
+                        </View>
+                        <View style={styles.pastInfo}>
+                          <Text style={[styles.pastHub, { color: colors.text }]} numberOfLines={1}>
+                            {isBox(b.special_instructions)
+                              ? parseHub(b.special_instructions)
+                              : b.pickup_address ?? "Pickup"}
+                          </Text>
+                          <Text style={[styles.pastDate, { color: colors.textDim }]}>
+                            {isBox(b.special_instructions)
+                              ? formatDate(b.created_at)
+                              : `→ ${b.dropoff_address ?? "Dropoff"} · ${formatDate(b.created_at)}`}
                           </Text>
                         </View>
+                        <View style={styles.pastRight}>
+                          {b.total_price != null && (
+                            <Text style={[styles.pastPrice, { color: colors.textMuted }]}>${b.total_price}</Text>
+                          )}
+                          <View style={[styles.statusPill, { borderColor: statusColor(b.status, colors) + "40" }]}>
+                            <Text style={[styles.statusText, { color: statusColor(b.status, colors) }]}>
+                              {statusLabel(b.status)}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    </View>
+                    </FadeSlideIn>
                   ))}
                 </View>
               )}
@@ -191,7 +193,8 @@ export default function PortsScreen() {
 // ─── Active delivery card ─────────────────────────────────────────────────────
 
 function ActiveDeliveryCard({ booking }: { booking: ServiceRequest }) {
-  const color = statusColor(booking.status);
+  const { colors } = useColors();
+  const color = statusColor(booking.status, colors);
   const label = statusLabel(booking.status);
   const { setRoute, setBookingId } = useBookingStore();
 
@@ -202,7 +205,7 @@ function ActiveDeliveryCard({ booking }: { booking: ServiceRequest }) {
   }
 
   return (
-    <View style={styles.activeCard}>
+    <View style={[styles.activeCard, { backgroundColor: colors.cardElev, borderColor: colors.cardElevBorder }]}>
       <View style={[styles.activeAccent, { backgroundColor: color }]} />
       <View style={styles.activeContent}>
         <View style={styles.activeTopRow}>
@@ -214,10 +217,10 @@ function ActiveDeliveryCard({ booking }: { booking: ServiceRequest }) {
             <Text style={[styles.statusText, { color }]}>{label}</Text>
           </View>
         </View>
-        <Text style={styles.activeHub} numberOfLines={1}>{booking.pickup_address}</Text>
-        <Text style={styles.activeAddress} numberOfLines={1}>→ {booking.dropoff_address}</Text>
+        <Text style={[styles.activeHub, { color: colors.text }]} numberOfLines={1}>{booking.pickup_address}</Text>
+        <Text style={[styles.activeAddress, { color: colors.textMuted }]} numberOfLines={1}>→ {booking.dropoff_address}</Text>
         <View style={styles.activeFooter}>
-          <Text style={styles.activeDate}>{formatDate(booking.created_at)}</Text>
+          <Text style={[styles.activeDate, { color: colors.textDim }]}>{formatDate(booking.created_at)}</Text>
           <Pressable
             style={({ pressed }) => [styles.trackBtn, { opacity: pressed ? 0.8 : 1 }]}
             onPress={handleTrack}
@@ -234,12 +237,13 @@ function ActiveDeliveryCard({ booking }: { booking: ServiceRequest }) {
 // ─── Active box card ──────────────────────────────────────────────────────────
 
 function ActiveBoxCard({ box }: { box: ServiceRequest }) {
+  const { colors } = useColors();
   const hub   = parseHub(box.special_instructions);
-  const color = statusColor(box.status);
+  const color = statusColor(box.status, colors);
   const label = statusLabel(box.status);
 
   return (
-    <View style={styles.activeCard}>
+    <View style={[styles.activeCard, { backgroundColor: colors.cardElev, borderColor: colors.cardElevBorder }]}>
       <View style={[styles.activeAccent, { backgroundColor: color }]} />
       <View style={styles.activeContent}>
         <View style={styles.activeTopRow}>
@@ -251,12 +255,12 @@ function ActiveBoxCard({ box }: { box: ServiceRequest }) {
             <Text style={[styles.statusText, { color }]}>{label}</Text>
           </View>
         </View>
-        <Text style={styles.activeHub}>{hub}</Text>
-        <Text style={styles.activeAddress}>{box.dropoff_address}</Text>
+        <Text style={[styles.activeHub, { color: colors.text }]}>{hub}</Text>
+        <Text style={[styles.activeAddress, { color: colors.textMuted }]}>{box.dropoff_address}</Text>
         <View style={styles.activeFooter}>
-          <Text style={styles.activeDate}>{formatDate(box.created_at)}</Text>
+          <Text style={[styles.activeDate, { color: colors.textDim }]}>{formatDate(box.created_at)}</Text>
           {box.total_price != null && (
-            <Text style={styles.activePrice}>${box.total_price}</Text>
+            <Text style={[styles.activePrice, { color: colors.text }]}>${box.total_price}</Text>
           )}
         </View>
       </View>
