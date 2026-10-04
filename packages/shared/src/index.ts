@@ -4,3 +4,5 @@ export * from "./supabase";
 export * from "./map";
 export * from "./porterFare";
 export * from "./demo";
+export * from "./theme";
+export * from "./directions";

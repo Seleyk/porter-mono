@@ -2,7 +2,7 @@
   "name": "@porter/shared",
   "version": "0.1.0",
   "private": true,
-  "description": "Code shared by the Porter customer and driver apps: Supabase client and types, fare algorithm, map and demo constants.",
+  "description": "Code shared by the Porter customer and driver apps: Supabase client and types, fare algorithm, map, theme, directions and demo constants.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
