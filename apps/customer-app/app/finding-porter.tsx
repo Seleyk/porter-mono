@@ -9,7 +9,7 @@ import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { createBooking } from "@/services/booking";
-import { closestAvailableDriver, DEMO_USER_COORDS } from "@/constants/simulation";
+import { closestAvailableDriver, DEMO_USER_COORDS } from "@porter/shared";
 
 const STEPS = [
   "Verifying porter credentials…",

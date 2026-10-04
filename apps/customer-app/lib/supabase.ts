@@ -1,6 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
-import { Database } from "./database.types";
+import { createPorterClient } from "@porter/shared";
 
 // Adapter so Supabase sessions persist securely on device
 const SecureStoreAdapter = {
@@ -16,11 +15,4 @@ if (!supabaseUrl || !supabaseKey) {
   console.error("Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_KEY");
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
-  auth: {
-    storage: SecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+export const supabase = createPorterClient(supabaseUrl, supabaseKey, SecureStoreAdapter);

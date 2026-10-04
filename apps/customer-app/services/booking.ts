@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { ServiceRequest } from "@/lib/database.types";
+import { ServiceRequest } from "@porter/shared";
 import { ItemType, DeliverySpeed } from "@/store/bookingStore";
 
 type ServiceType = "luggage" | "shopping" | "packages";

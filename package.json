@@ -1,6 +1,14 @@
 {
-  "dependencies": {
-    "@supabase/supabase-js": "^2.106.2"
+  "name": "porter-mono",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "gen:types": "(printf '// GENERATED from the hosted Supabase project. Do not edit by hand.\\n// Regenerate after every migration: `npm run gen:types` at the repo root.\\n\\n'; supabase gen types typescript --project-id nybpysdcbzygbcicxumh --schema public) > packages/shared/src/database.types.ts",
+    "gen:types:local": "(printf '// GENERATED from the hosted Supabase project. Do not edit by hand.\\n// Regenerate after every migration: `npm run gen:types` at the repo root.\\n\\n'; supabase gen types typescript --local --schema public) > packages/shared/src/database.types.ts",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "supabase": "^2.101.0"

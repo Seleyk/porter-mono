@@ -11,3 +11,7 @@ dist/
 
 # macOS
 .DS_Store
+
+# supabase CLI local state
+supabase/.temp/
+supabase/.branches/

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
-import { Profile } from "@/lib/database.types";
+import { Profile } from "@porter/shared";
 
 function calcCompletion(profile: Profile | null): number {
   if (!profile) return 0;

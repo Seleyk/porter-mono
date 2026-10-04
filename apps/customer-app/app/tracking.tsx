@@ -9,9 +9,8 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { subscribeToBooking } from "@/services/booking";
-import { DEMO_USER_COORDS } from "@/constants/simulation";
+import { DEMO_USER_COORDS, ServiceRequest, mapStyleFor } from "@porter/shared";
 import { fetchRoute } from "@/services/directions";
-import { ServiceRequest } from "@/lib/database.types";
 
 const STAGES = [
   { id: "confirmed", label: "Confirmed", icon: "checkmark-circle-outline" as const },
@@ -111,7 +110,7 @@ export default function TrackingScreen() {
   useEffect(() => {
     if (!bookingId) return;
     const channel = subscribeToBooking(bookingId, (row: ServiceRequest) => {
-      const idx = STATUS_TO_STAGE[row.status];
+      const idx = row.status ? STATUS_TO_STAGE[row.status] : undefined;
       if (idx !== undefined) setStageIdx(idx);
     });
     return () => { channel.unsubscribe(); };
@@ -158,7 +157,7 @@ export default function TrackingScreen() {
             <View style={styles.mapCard}>
               <MapboxGL.MapView
                 style={{ flex: 1 }}
-                styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+                styleURL={mapStyleFor(isDark)}
                 scrollEnabled={false}
                 zoomEnabled={false}
                 rotateEnabled={false}
@@ -332,7 +331,7 @@ export default function TrackingScreen() {
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+            styleURL={mapStyleFor(isDark)}
             logoEnabled={false}
             attributionEnabled={false}
           >

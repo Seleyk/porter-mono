@@ -10,7 +10,7 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type DeliverySpeed } from "@/store/bookingStore";
 import { fetchRoute } from "@/services/directions";
-import { calculateFare, type LuggageSize } from "@/services/porterFare";
+import { calculateFare, type LuggageSize, mapStyleFor } from "@porter/shared";
 
 const METHODS = [
   {
@@ -210,7 +210,7 @@ export default function DeliveryMethodScreen() {
           <View style={styles.mapCard}>
             <MapboxGL.MapView
               style={{ flex: 1 }}
-              styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+              styleURL={mapStyleFor(isDark)}
               scrollEnabled={false}
               zoomEnabled={false}
               rotateEnabled={false}
@@ -303,7 +303,7 @@ export default function DeliveryMethodScreen() {
         <View style={{ flex: 1, backgroundColor: Colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+            styleURL={mapStyleFor(isDark)}
             logoEnabled={false}
             attributionEnabled={false}
           >

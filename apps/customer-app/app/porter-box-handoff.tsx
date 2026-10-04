@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
-import { DEMO_DRIVERS } from "@/constants/simulation";
+import { DEMO_DRIVERS } from "@porter/shared";
 
 const STEPS = ["Booked", "Dispatched", "En Route", "At Door"];
 const COMPARTMENT = "B4";
