@@ -2,9 +2,8 @@
 -- read from the live database on 2026-10-04. Everything below already exists in
 -- the hosted project: this file records it, it does not change it.
 --
--- The hosted project has no migration history yet. Before the first
--- `supabase db push`, mark this file as applied so it is not re-run there:
---   supabase migration repair --status applied 20261004000000
+-- Recorded as applied in the hosted project's migration history on 2026-10-04,
+-- so `supabase db push` never re-runs it there.
 --
 -- Known problems are recorded as-is here and fixed in later migrations; see
 -- supabase/README.md.

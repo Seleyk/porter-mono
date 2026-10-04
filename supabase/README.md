@@ -17,10 +17,10 @@ One-time setup on your machine:
 ```sh
 npx supabase login
 npx supabase link --project-ref nybpysdcbzygbcicxumh
-# The hosted DB already contains everything in the baseline, so record it as applied
-# (writes one row to the hosted migration history table; changes no schema):
-npx supabase migration repair --status applied 20261004000000
 ```
+
+The hosted project already has the baseline (`20261004000000`) recorded as applied
+(done 2026-10-04), so `db push` starts from the next migration.
 
 Making a schema change:
 
