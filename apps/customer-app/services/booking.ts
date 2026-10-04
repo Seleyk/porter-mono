@@ -92,24 +92,15 @@ export async function getCustomerBookings(customerId: string): Promise<ServiceRe
   return data ?? [];
 }
 
+// Job changes go through database functions that check who may do what
+// (supabase/migrations/*_job_functions.sql).
 export async function cancelBooking(bookingId: string): Promise<void> {
-  const { error } = await supabase
-    .from("service_requests")
-    .update({ status: "cancelled" })
-    .eq("id", bookingId);
+  const { error } = await supabase.rpc("cancel_request", { request_id: bookingId });
   if (error) throw error;
 }
 
 export async function addTip(bookingId: string, tipAmount: number): Promise<void> {
-  const booking = await getBooking(bookingId);
-  if (!booking) return;
-  const { error } = await supabase
-    .from("service_requests")
-    .update({
-      tip_amount: tipAmount,
-      total_price: (booking.base_price ?? 0) + tipAmount,
-    })
-    .eq("id", bookingId);
+  const { error } = await supabase.rpc("add_tip", { request_id: bookingId, amount: tipAmount });
   if (error) throw error;
 }
 
