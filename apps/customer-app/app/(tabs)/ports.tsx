@@ -8,7 +8,7 @@ import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
 import { getCustomerBookings } from "@/services/booking";
-import { ServiceRequest } from "@/lib/database.types";
+import { ServiceRequest } from "@porter/shared";
 import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ function parseHub(s: string | null): string {
   return s?.match(/\[hub:([^\]]+)\]/)?.[1] ?? "Porter Box";
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string | null): string {
   switch (status) {
     case "pending":   return "Awaiting porter";
     case "matched":   return "Porter assigned";
@@ -31,11 +31,11 @@ function statusLabel(status: string): string {
     case "picked_up": return "In transit";
     case "completed": return "Delivered";
     case "cancelled": return "Cancelled";
-    default:          return status;
+    default:          return status ?? "Unknown";
   }
 }
 
-function statusColor(status: string, colors: ReturnType<typeof useColors>["colors"]): string {
+function statusColor(status: string | null, colors: ReturnType<typeof useColors>["colors"]): string {
   switch (status) {
     case "pending":
     case "matched":   return Colors.steel;
@@ -46,7 +46,8 @@ function statusColor(status: string, colors: ReturnType<typeof useColors>["color
   }
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -70,8 +71,8 @@ export default function PortsScreen() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const active = bookings.filter((b) => ACTIVE_STATUSES.has(b.status));
-  const past   = bookings.filter((b) => !ACTIVE_STATUSES.has(b.status));
+  const active = bookings.filter((b) => ACTIVE_STATUSES.has(b.status ?? ""));
+  const past   = bookings.filter((b) => !ACTIVE_STATUSES.has(b.status ?? ""));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bgDeep }]}>

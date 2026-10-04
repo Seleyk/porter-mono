@@ -11,7 +11,7 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type LatLng } from "@/store/bookingStore";
 import { searchPlaces, type MapboxFeature } from "@/services/geocoding";
-import { DEMO_FAVORITES, DEMO_RECENTS } from "@/constants/simulation";
+import { DEMO_FAVORITES, DEMO_RECENTS } from "@porter/shared";
 
 export default function WhereToScreen() {
   const insets = useSafeAreaInsets();

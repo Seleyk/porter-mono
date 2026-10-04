@@ -7,7 +7,7 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import MapboxGL from "@rnmapbox/maps";
-import { DEMO_USER_COORDS, DEMO_DRIVERS, DEMO_FAVORITES, DEMO_RECENTS, DEMO_CURRENT_LOCATION } from "@/constants/simulation";
+import { MIAMI_CENTER, DEFAULT_ZOOM, mapStyleFor, DEMO_DRIVERS, DEMO_FAVORITES, DEMO_RECENTS, DEMO_CURRENT_LOCATION } from "@porter/shared";
 import { useBookingStore } from "@/store/bookingStore";
 import { FadeSlideIn } from "@/components/FadeSlideIn";
 
@@ -19,7 +19,6 @@ function getGreeting() {
 }
 
 
-const MIAMI_CENTER: [number, number] = [DEMO_USER_COORDS.lng, DEMO_USER_COORDS.lat];
 
 const FAKE_DRIVERS = DEMO_DRIVERS.map((d) => ({
   id: d.initials,
@@ -156,7 +155,7 @@ export default function HomeScreen() {
           <View style={[styles.mapCard, { height: MAP_H, borderColor: colors.cardBorder }]}>
             <MapboxGL.MapView
               style={{ flex: 1 }}
-              styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+              styleURL={mapStyleFor(isDark)}
               scrollEnabled={false}
               zoomEnabled={false}
               rotateEnabled={false}
@@ -166,7 +165,7 @@ export default function HomeScreen() {
               compassEnabled={false}
             >
               <MapboxGL.Camera
-                zoomLevel={14.5}
+                zoomLevel={DEFAULT_ZOOM}
                 centerCoordinate={MIAMI_CENTER}
                 animationDuration={0}
               />
@@ -218,12 +217,12 @@ export default function HomeScreen() {
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <MapboxGL.MapView
             style={{ flex: 1 }}
-            styleURL={isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/navigation-day-v1"}
+            styleURL={mapStyleFor(isDark)}
             logoEnabled={false}
             attributionEnabled={false}
           >
             <MapboxGL.Camera
-              zoomLevel={14.5}
+              zoomLevel={DEFAULT_ZOOM}
               centerCoordinate={MIAMI_CENTER}
               animationDuration={0}
             />

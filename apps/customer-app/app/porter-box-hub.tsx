@@ -8,11 +8,9 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
-import { PorterHub } from "@/lib/database.types";
-import { DEMO_HUBS } from "@/constants/simulation";
+import { PorterHub, DEMO_HUBS, getBoxStorageFare } from "@porter/shared";
 import { useBookingStore, type LocalPorterBoxSession } from "@/store/bookingStore";
 import { fetchActivePorterBoxOrders, formatDuration, type PorterBoxOrder } from "@/services/porterBox";
-import { getBoxStorageFare } from "@/services/porterFare";
 import { FadeSlideIn } from "@/components/FadeSlideIn";
 
 const HOW_TO = [
