@@ -351,6 +351,7 @@ export type Database = {
           pickup_latitude: number
           pickup_longitude: number
           porter_id: string | null
+          proof_photo_path: string | null
           service_type: string
           special_instructions: string | null
           status: string | null
@@ -377,6 +378,7 @@ export type Database = {
           pickup_latitude: number
           pickup_longitude: number
           porter_id?: string | null
+          proof_photo_path?: string | null
           service_type: string
           special_instructions?: string | null
           status?: string | null
@@ -403,6 +405,7 @@ export type Database = {
           pickup_latitude?: number
           pickup_longitude?: number
           porter_id?: string | null
+          proof_photo_path?: string | null
           service_type?: string
           special_instructions?: string | null
           status?: string | null
@@ -432,7 +435,190 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_request: {
+        Args: { request_id: string }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }
+      }
+      add_tip: {
+        Args: { amount: number; request_id: string }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }
+      }
+      advance_request: {
+        Args: { photo_path?: string; request_id: string; to_status: string }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }
+      }
+      cancel_request: {
+        Args: { request_id: string }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }
+      }
+      is_approved_porter: {
+        Args: { uid?: string }
+        Returns: boolean
+      }
+      nearby_open_requests: {
+        Args: { lat: number; lng: number; radius_km?: number }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }[]
+      }
+      release_request: {
+        Args: { request_id: string }
+        Returns: {
+            actual_dropoff_time: string | null
+            actual_pickup_time: string | null
+            base_price: number | null
+            created_at: string | null
+            customer_id: string
+            dropoff_address: string
+            dropoff_latitude: number
+            dropoff_longitude: number
+            estimated_dropoff_time: string | null
+            estimated_pickup_time: string | null
+            id: string
+            item_count: number | null
+            item_size: string | null
+            payment_status: string | null
+            pickup_address: string
+            pickup_latitude: number
+            pickup_longitude: number
+            porter_id: string | null
+            proof_photo_path: string | null
+            service_type: string
+            special_instructions: string | null
+            status: string | null
+            tip_amount: number | null
+            total_price: number | null
+            updated_at: string | null
+          }
+      }
     }
     Enums: {
       [_ in never]: never
