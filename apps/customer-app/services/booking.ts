@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { ServiceRequest } from "@porter/shared";
+import { MIAMI_CENTER, formatBookingNotes, type PorterLocation, type Profile, type ServiceRequest } from "@porter/shared";
 import { ItemType, DeliverySpeed } from "@/store/bookingStore";
 
 type ServiceType = "luggage" | "shopping" | "packages";
@@ -17,9 +17,8 @@ function toDominantSize(counts: { large: number; standard: number; small: number
   return "medium";
 }
 
-// Placeholder until Mapbox geocoding is wired — defaults to Midtown Manhattan
-const NYC_LAT = 40.7549;
-const NYC_LNG = -73.984;
+// Fallback when the route has no coordinates (Miami launch area).
+const [FALLBACK_LNG, FALLBACK_LAT] = MIAMI_CENTER;
 
 interface CreateBookingParams {
   customerId: string;
@@ -40,15 +39,12 @@ export async function createBooking(params: CreateBookingParams): Promise<Servic
   const basePrice = params.fareUSD;
   const itemCount = params.itemCounts.large + params.itemCounts.standard + params.itemCounts.small;
 
-  // Serialize extra metadata alongside any user notes
-  const metaParts: string[] = [];
-  if (params.specialRequests) metaParts.push(params.specialRequests);
-  metaParts.push(
-    `[speed:${params.deliverySpeed}]`,
-    `[dropoff:${params.dropoffMethod}]`,
-    `[counts:L${params.itemCounts.large}/M${params.itemCounts.standard}/S${params.itemCounts.small}]`,
-  );
-  if (params.selectedBoxName) metaParts.push(`[hub:${params.selectedBoxName}]`);
+  const notes = formatBookingNotes(params.specialRequests, {
+    speed: params.deliverySpeed,
+    dropoff: params.dropoffMethod,
+    counts: params.itemCounts,
+    hub: params.selectedBoxName ?? undefined,
+  });
 
   const { data, error } = await supabase
     .from("service_requests")
@@ -58,14 +54,14 @@ export async function createBooking(params: CreateBookingParams): Promise<Servic
       item_count: Math.max(1, itemCount),
       item_size: toDominantSize(params.itemCounts),
       pickup_address: params.pickup,
-      pickup_latitude: params.pickupCoords?.lat ?? NYC_LAT,
-      pickup_longitude: params.pickupCoords?.lng ?? NYC_LNG,
+      pickup_latitude: params.pickupCoords?.lat ?? FALLBACK_LAT,
+      pickup_longitude: params.pickupCoords?.lng ?? FALLBACK_LNG,
       dropoff_address: params.dropoff,
-      dropoff_latitude: params.dropoffCoords?.lat ?? (NYC_LAT + 0.01),
-      dropoff_longitude: params.dropoffCoords?.lng ?? (NYC_LNG + 0.005),
+      dropoff_latitude: params.dropoffCoords?.lat ?? (FALLBACK_LAT + 0.01),
+      dropoff_longitude: params.dropoffCoords?.lng ?? (FALLBACK_LNG + 0.005),
       base_price: basePrice,
       total_price: basePrice,
-      special_instructions: metaParts.join(" ") || null,
+      special_instructions: notes,
     })
     .select()
     .single();
@@ -123,4 +119,47 @@ export function subscribeToBooking(
     )
     .subscribe();
   return { unsubscribe: () => supabase.removeChannel(channel) };
+}
+
+// ─── The assigned porter ──────────────────────────────────────────────────────
+// The customer can read the porter's profile while they share a job, and
+// their location while the job is accepted or picked up (RLS).
+
+export type PorterSummary = Pick<
+  Profile,
+  "id" | "first_name" | "last_name" | "phone" | "avatar_url" | "vehicle_make" | "vehicle_model" | "vehicle_color" | "license_plate"
+>;
+
+export async function getPorterProfile(porterId: string): Promise<PorterSummary | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, phone, avatar_url, vehicle_make, vehicle_model, vehicle_color, license_plate")
+    .eq("id", porterId)
+    .maybeSingle();
+  return data;
+}
+
+export async function getPorterLocation(porterId: string): Promise<PorterLocation | null> {
+  const { data } = await supabase.from("porter_locations").select("*").eq("porter_id", porterId).maybeSingle();
+  return data;
+}
+
+export function subscribeToPorterLocation(porterId: string, onUpdate: (row: PorterLocation) => void) {
+  const channel = supabase
+    .channel(`porter-location:${porterId}:${Date.now()}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "porter_locations", filter: `porter_id=eq.${porterId}` },
+      (payload) => {
+        if (payload.new && "latitude" in payload.new) onUpdate(payload.new as PorterLocation);
+      },
+    )
+    .subscribe();
+  return { unsubscribe: () => supabase.removeChannel(channel) };
+}
+
+/** A short-lived link to the porter's proof-of-delivery photo. */
+export async function getProofPhotoUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from("proof-of-delivery").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }

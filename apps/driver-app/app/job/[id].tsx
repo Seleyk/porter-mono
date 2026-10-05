@@ -9,7 +9,7 @@ import { useOnline } from "@/context/OnlineContext";
 import { acceptJob, fetchJob } from "@/services/jobs";
 import { fetchRoute } from "@/services/routes";
 import { JobMap } from "@/components/JobMap";
-import { Stops } from "@/components/JobCard";
+import { JobDetailsCard, Stops } from "@/components/JobCard";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { dropoffOf, formatMiles, itemSummary, milesBetween, money, pickupOf } from "@/lib/format";
 
@@ -106,12 +106,7 @@ export default function JobDetailScreen() {
               <Stops job={job} />
             </Card>
 
-            {job.special_instructions ? (
-              <Card style={{ gap: 6 }}>
-                <Text style={styles.label}>Customer note</Text>
-                <Text style={styles.body}>{job.special_instructions}</Text>
-              </Card>
-            ) : null}
+            <JobDetailsCard job={job} />
 
             <Button label="Accept job" icon="checkmark" onPress={accept} loading={accepting} />
           </>
@@ -142,7 +137,5 @@ const styles = StyleSheet.create({
   price: { color: Colors.text, fontFamily: Fonts.bold, fontSize: 30 },
   stat: { color: Colors.steel, fontFamily: Fonts.semibold, fontSize: 14 },
   title: { color: Colors.text, fontFamily: Fonts.semibold, fontSize: 17, textAlign: "center" },
-  label: { color: Colors.textDim, fontFamily: Fonts.medium, fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
-  body: { color: Colors.text, fontFamily: Fonts.regular, fontSize: 15, lineHeight: 21 },
   muted: { color: Colors.textMuted, fontFamily: Fonts.regular, fontSize: 13 },
 });

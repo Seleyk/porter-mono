@@ -63,7 +63,7 @@ function getLuggageSize(counts: { large: number; standard: number; small: number
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, bgGradient } = useColors();
-  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare } = useBookingStore();
+  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare, setBookingId } = useBookingStore();
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [mapExpanded, setMapExpanded] = useState(false);
@@ -157,6 +157,7 @@ export default function DeliveryMethodScreen() {
     }
     setDeliverySpeed(method);
     setCalculatedFare(tierPrice(method));
+    setBookingId(null); // the finding screen creates a fresh booking
     router.push("/finding-porter");
   }
 

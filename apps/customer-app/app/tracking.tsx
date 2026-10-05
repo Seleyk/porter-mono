@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView, Modal } from "react-native";
+import { useState, useEffect } from "react";
+import { StyleSheet, Text, View, Pressable, ScrollView, Modal, Linking } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,8 +8,8 @@ import MapboxGL from "@rnmapbox/maps";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
-import { subscribeToBooking } from "@/services/booking";
-import { DEMO_USER_COORDS, ServiceRequest, mapStyleFor } from "@porter/shared";
+import { useLiveBooking } from "@/hooks/useLiveBooking";
+import { DEMO_USER_COORDS, mapStyleFor } from "@porter/shared";
 import { fetchRoute } from "@/services/directions";
 
 const STAGES = [
@@ -20,116 +20,114 @@ const STAGES = [
   { id: "delivered", label: "Delivered", icon: "home-outline" as const },
 ];
 
-const STATUS_TO_STAGE: Record<string, number> = {
-  pending:   0,
-  matched:   1,
-  accepted:  2,
-  picked_up: 3,
-  completed: 4,
-};
+/** Porter counts as "arrived" within this distance of the pickup. */
+const ARRIVED_METERS = 150;
+/** Re-fetch the ETA after the porter moves this far. */
+const REROUTE_METERS = 200;
+
+function metersBetween(a: [number, number], b: [number, number]) {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLng = toRad(b[0] - a[0]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
 
 export default function TrackingScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, bgGradient } = useColors();
   const { bookingId, pickup, dropoff, pickupCoords, dropoffCoords,
-    assignedDriverName, assignedDriverInitials, assignedDriverRating,
-    dropoffMethod, porterBoxCode, selectedBoxName } = useBookingStore();
-  const [stageIdx, setStageIdx] = useState(0);
+    assignedDriverName, assignedDriverInitials,
+    dropoffMethod, porterBoxCode, reset } = useBookingStore();
+  const { booking, porter, position } = useLiveBooking(bookingId);
   const [mapExpanded, setMapExpanded] = useState(false);
-  const completedRef = useRef(false);
 
-  const pickupLng = pickupCoords?.lng ?? DEMO_USER_COORDS.lng;
-  const pickupLat = pickupCoords?.lat ?? DEMO_USER_COORDS.lat;
-  const dropoffLng = dropoffCoords?.lng ?? (DEMO_USER_COORDS.lng + 0.012);
-  const dropoffLat = dropoffCoords?.lat ?? (DEMO_USER_COORDS.lat - 0.008);
-  const pickupCoord: [number, number] = [pickupLng, pickupLat];
-  const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
+  // Prefer the booking row; fall back to what the booking flow had.
+  const pickupCoord: [number, number] = booking
+    ? [booking.pickup_longitude, booking.pickup_latitude]
+    : [pickupCoords?.lng ?? DEMO_USER_COORDS.lng, pickupCoords?.lat ?? DEMO_USER_COORDS.lat];
+  const dropoffCoord: [number, number] = booking
+    ? [booking.dropoff_longitude, booking.dropoff_latitude]
+    : [dropoffCoords?.lng ?? DEMO_USER_COORDS.lng + 0.012, dropoffCoords?.lat ?? DEMO_USER_COORDS.lat - 0.008];
+  const pickupLabel = booking?.pickup_address ?? pickup;
+  const dropoffLabel = booking?.dropoff_address ?? dropoff;
 
-  const driverStart: [number, number] = [pickupLng + 0.008, pickupLat + 0.004];
+  const status = booking?.status ?? "pending";
+  const cancelled = status === "cancelled";
+  const driverCoord: [number, number] | null = position ? [position.lng, position.lat] : null;
+  const arrived = status === "accepted" && !!driverCoord && metersBetween(driverCoord, pickupCoord) <= ARRIVED_METERS;
+  const stageIdx =
+    status === "completed" ? 4 :
+    status === "picked_up" ? 3 :
+    status === "accepted" ? (arrived ? 2 : 1) :
+    0;
 
+  // The trip itself (pickup → drop-off), once the booking has loaded.
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
-  const [porterToPickupCoords, setPorterToPickupCoords] = useState<[number, number][]>([driverStart, pickupCoord]);
-  const [porterEtaMs, setPorterEtaMs] = useState(0);
-  const [transitEtaMs, setTransitEtaMs] = useState(0);
-  const [driverCoord, setDriverCoord] = useState<[number, number]>(driverStart);
+  const [transitEtaMin, setTransitEtaMin] = useState<number | null>(null);
+  useEffect(() => {
+    if (!booking) return;
+    fetchRoute(pickupCoord, dropoffCoord).then((r) => {
+      setRouteCoords(r.coords);
+      setTransitEtaMin(r.durationMinutes ? Math.round(r.durationMinutes) : null);
+    });
+  }, [booking?.id]);
 
+  // The porter's leg to their next stop, refreshed as they move.
+  const target = status === "picked_up" ? dropoffCoord : pickupCoord;
+  const [legCoords, setLegCoords] = useState<[number, number][] | null>(null);
+  const [legEtaMin, setLegEtaMin] = useState<number | null>(null);
+  const [legFrom, setLegFrom] = useState<{ coord: [number, number]; status: string } | null>(null);
+  useEffect(() => {
+    if (!driverCoord || (status !== "accepted" && status !== "picked_up")) {
+      setLegCoords(null);
+      setLegEtaMin(null);
+      setLegFrom(null);
+      return;
+    }
+    // Re-route when the porter has moved enough, or moved on to the drop-off.
+    if (legFrom && legFrom.status === status && metersBetween(legFrom.coord, driverCoord) < REROUTE_METERS) return;
+    setLegFrom({ coord: driverCoord, status });
+    fetchRoute(driverCoord, target).then((r) => {
+      setLegCoords(r.coords);
+      setLegEtaMin(r.durationMinutes ? Math.max(1, Math.round(r.durationMinutes)) : null);
+    });
+  }, [driverCoord?.[0], driverCoord?.[1], status]);
+
+  const lineCoords = legCoords ?? routeCoords;
+  const framePoints = [pickupCoord, dropoffCoord, ...(driverCoord ? [driverCoord] : [])];
   const camNE: [number, number] = [
-    Math.max(pickupLng, dropoffLng) + 0.015,
-    Math.max(pickupLat, dropoffLat) + 0.015,
+    Math.max(...framePoints.map((p) => p[0])) + 0.01,
+    Math.max(...framePoints.map((p) => p[1])) + 0.01,
   ];
   const camSW: [number, number] = [
-    Math.min(pickupLng, dropoffLng) - 0.015,
-    Math.min(pickupLat, dropoffLat) - 0.015,
+    Math.min(...framePoints.map((p) => p[0])) - 0.01,
+    Math.min(...framePoints.map((p) => p[1])) - 0.01,
   ];
 
-  // Fetch both route legs on mount
-  useEffect(() => {
-    Promise.all([
-      fetchRoute(driverStart, pickupCoord),
-      fetchRoute(pickupCoord, dropoffCoord),
-    ]).then(([porterLeg, deliveryLeg]) => {
-      setPorterToPickupCoords(porterLeg.coords);
-      setPorterEtaMs(Math.round(porterLeg.durationMinutes * 60 * 1000));
-      setRouteCoords(deliveryLeg.coords);
-      setTransitEtaMs(Math.round(deliveryLeg.durationMinutes * 60 * 1000));
-    });
-  }, []);
-
-  // Drive the P badge along real route geometry at realistic speed
-  useEffect(() => {
-    if (stageIdx === 0) { setDriverCoord(driverStart); return; }
-    if (stageIdx === 2) { setDriverCoord(pickupCoord); return; }
-    if (stageIdx === 4) { setDriverCoord(dropoffCoord); return; }
-
-    const [coords, etaMs] =
-      stageIdx === 1
-        ? [porterToPickupCoords, porterEtaMs]
-        : [routeCoords, transitEtaMs];
-
-    if (coords.length < 2 || etaMs === 0) return;
-    let step = 0;
-    const intervalMs = Math.max(500, etaMs / coords.length);
-    const id = setInterval(() => {
-      step++;
-      if (step >= coords.length) { clearInterval(id); return; }
-      setDriverCoord(coords[step]);
-    }, intervalMs);
-    return () => clearInterval(id);
-  }, [stageIdx, porterToPickupCoords, routeCoords, porterEtaMs, transitEtaMs]);
-
-  // Stage auto-advance — fires when stage or ETAs change (ETAs arrive async from Mapbox)
-  useEffect(() => {
-    if (porterEtaMs === 0 || transitEtaMs === 0) return;
-    const STAGE_DURATIONS = [5_000, porterEtaMs, 15_000, transitEtaMs];
-    if (stageIdx >= STAGE_DURATIONS.length) return;
-    const t = setTimeout(() => setStageIdx((s) => s + 1), STAGE_DURATIONS[stageIdx]);
-    return () => clearTimeout(t);
-  }, [stageIdx, porterEtaMs, transitEtaMs]);
-
-  // Real-time override — real porter app updates take precedence over simulation
-  useEffect(() => {
-    if (!bookingId) return;
-    const channel = subscribeToBooking(bookingId, (row: ServiceRequest) => {
-      const idx = row.status ? STATUS_TO_STAGE[row.status] : undefined;
-      if (idx !== undefined) setStageIdx(idx);
-    });
-    return () => { channel.unsubscribe(); };
-  }, [bookingId]);
-
   const stage = STAGES[stageIdx];
+  const porterEtaMin = status === "accepted" ? legEtaMin ?? "—" : "—";
+  const deliveryEtaMin = status === "picked_up" ? legEtaMin ?? transitEtaMin ?? "—" : transitEtaMin ?? "—";
 
-  const transitEtaMin = Math.round(transitEtaMs / 60000) || "—";
-  const porterEtaMin = Math.round(porterEtaMs / 60000) || "—";
+  const porterName = porter ? `${porter.first_name} ${porter.last_name[0] ?? ""}.` : assignedDriverName ?? "Your Porter";
+  const porterInitials = porter
+    ? `${porter.first_name[0] ?? ""}${porter.last_name[0] ?? ""}`.toUpperCase()
+    : assignedDriverInitials ?? "P";
+  const vehicle = porter
+    ? [porter.vehicle_color, porter.vehicle_make, porter.vehicle_model].filter(Boolean).join(" ")
+    : "";
+  const porterDetail = [vehicle, porter?.license_plate].filter(Boolean).join(" · ") || "Identity verified";
+  const callPorter = porter?.phone ? () => Linking.openURL(`tel:${porter.phone!.replace(/[^\d+]/g, "")}`) : undefined;
 
   const stops = [
     {
-      label: pickup || "Pickup location",
-      sub: stageIdx >= 2 ? "Pickup · Arrived" : `Pickup · ~${porterEtaMin} min`,
+      label: pickupLabel || "Pickup location",
+      sub: stageIdx >= 3 ? "Pickup · Collected" : stageIdx === 2 ? "Pickup · Porter arrived" : `Pickup · ~${porterEtaMin} min`,
       done: stageIdx >= 2,
     },
     {
-      label: dropoff || "Drop-off location",
-      sub: stageIdx >= 4 ? "Drop-off · Delivered" : `Drop-off · ~${transitEtaMin} min`,
+      label: dropoffLabel || "Drop-off location",
+      sub: stageIdx >= 4 ? "Drop-off · Delivered" : `Drop-off · ~${deliveryEtaMin} min`,
       done: stageIdx >= 4,
     },
   ];
@@ -174,7 +172,7 @@ export default function TrackingScreen() {
                 {/* Dashed route line */}
                 <MapboxGL.ShapeSource
                   id="route"
-                  shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+                  shape={{ type: "Feature", geometry: { type: "LineString", coordinates: lineCoords }, properties: {} }}
                 >
                   <MapboxGL.LineLayer
                     id="routeLine"
@@ -197,11 +195,13 @@ export default function TrackingScreen() {
                 </MapboxGL.MarkerView>
 
                 {/* Animated driver marker */}
-                <MapboxGL.MarkerView coordinate={driverCoord}>
-                  <View style={styles.activePorter}>
-                    <Text style={styles.activePorterText}>P</Text>
-                  </View>
-                </MapboxGL.MarkerView>
+                {driverCoord && (
+                  <MapboxGL.MarkerView coordinate={driverCoord}>
+                    <View style={styles.activePorter}>
+                      <Text style={styles.activePorterText}>P</Text>
+                    </View>
+                  </MapboxGL.MarkerView>
+                )}
               </MapboxGL.MapView>
 
               {/* Expand hint */}
@@ -234,24 +234,16 @@ export default function TrackingScreen() {
                 <Ionicons name={stage.icon} size={20} color={Colors.steel} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.statusLabel, { color: colors.text }]}>{stage.label}</Text>
+                <Text style={[styles.statusLabel, { color: colors.text }]}>{cancelled ? "Cancelled" : stage.label}</Text>
                 <Text style={[styles.statusEta, { color: colors.textMuted }]}>
-                  {stageIdx === 0 && "Connecting with your porter"}
-                  {stageIdx === 1 && <><Text>Porter arriving in </Text><Text style={styles.statusEtaNum}>~{porterEtaMin} min</Text></>}
-                  {stageIdx === 2 && "Collecting your items"}
-                  {stageIdx === 3 && <><Text>Delivery in </Text><Text style={styles.statusEtaNum}>~{transitEtaMin} min</Text></>}
-                  {stageIdx >= 4 && "Delivered"}
+                  {cancelled && "This booking was cancelled"}
+                  {!cancelled && stageIdx === 0 && "Waiting for a porter to accept"}
+                  {!cancelled && stageIdx === 1 && <><Text>Porter arriving in </Text><Text style={styles.statusEtaNum}>~{porterEtaMin} min</Text></>}
+                  {!cancelled && stageIdx === 2 && "Your porter is at the pickup"}
+                  {!cancelled && stageIdx === 3 && <><Text>Delivery in </Text><Text style={styles.statusEtaNum}>~{deliveryEtaMin} min</Text></>}
+                  {!cancelled && stageIdx >= 4 && "Delivered"}
                 </Text>
               </View>
-              {stageIdx < 4 && (
-                <Pressable
-                  style={({ pressed }) => [styles.skipBtn, { opacity: pressed ? 0.6 : 1 }]}
-                  onPress={() => setStageIdx((s) => Math.min(s + 1, 4))}
-                >
-                  <Text style={styles.skipText}>Skip</Text>
-                  <Ionicons name="chevron-forward" size={12} color={Colors.steel} />
-                </Pressable>
-              )}
             </View>
           </View>
 
@@ -265,7 +257,7 @@ export default function TrackingScreen() {
                 ))}
               </View>
               <Text style={styles.verifySub}>
-                Share with {assignedDriverName?.split(" ")[0] ?? "your porter"} to authorize the handoff.
+                Share with {porter?.first_name ?? "your porter"} to authorize the handoff.
               </Text>
             </View>
           )}
@@ -274,20 +266,22 @@ export default function TrackingScreen() {
           <View style={[styles.porterCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.porterAvatar}>
               <Text style={styles.porterAvatarText}>
-                {assignedDriverInitials ?? "P"}
+                {porterInitials}
               </Text>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.porterName, { color: colors.text }]}>{assignedDriverName ?? "Your Porter"}</Text>
+              <Text style={[styles.porterName, { color: colors.text }]}>{porterName}</Text>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={13} color={Colors.gold} />
-                <Text style={[styles.ratingText, { color: colors.textMuted }]}>
-                  {assignedDriverRating?.toFixed(2) ?? "4.98"} · Identity verified
-                </Text>
+                <Ionicons name="shield-checkmark" size={13} color={Colors.gold} />
+                <Text style={[styles.ratingText, { color: colors.textMuted }]} numberOfLines={1}>{porterDetail}</Text>
               </View>
             </View>
             <View style={styles.porterActions}>
-              <Pressable style={[styles.porterActionBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder }]}>
+              <Pressable
+                onPress={callPorter}
+                disabled={!callPorter}
+                style={[styles.porterActionBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder, opacity: callPorter ? 1 : 0.4 }]}
+              >
                 <Ionicons name="call-outline" size={18} color={colors.text} />
               </Pressable>
               <Pressable style={[styles.porterActionBtn, { backgroundColor: colors.buttonSecondary, borderColor: colors.cardBorder }]}>
@@ -314,7 +308,14 @@ export default function TrackingScreen() {
           </View>
         </ScrollView>
 
-        {stageIdx === STAGES.length - 1 && (
+        {cancelled ? (
+          <Pressable
+            style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1, marginTop: 12 }]}
+            onPress={() => { reset(); router.replace("/(tabs)"); }}
+          >
+            <Text style={styles.ctaText}>Back to home</Text>
+          </Pressable>
+        ) : stageIdx === STAGES.length - 1 && (
           <Pressable
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1, marginTop: 12 }]}
             onPress={() => router.push("/proof-of-delivery")}
@@ -343,7 +344,7 @@ export default function TrackingScreen() {
             {/* Route line */}
             <MapboxGL.ShapeSource
               id="routeFull"
-              shape={{ type: "Feature", geometry: { type: "LineString", coordinates: routeCoords }, properties: {} }}
+              shape={{ type: "Feature", geometry: { type: "LineString", coordinates: lineCoords }, properties: {} }}
             >
               <MapboxGL.LineLayer
                 id="routeLineFull"
@@ -363,11 +364,13 @@ export default function TrackingScreen() {
               </View>
             </MapboxGL.MarkerView>
 
-            <MapboxGL.MarkerView coordinate={driverCoord}>
-              <View style={styles.activePorter}>
-                <Text style={styles.activePorterText}>P</Text>
-              </View>
-            </MapboxGL.MarkerView>
+            {driverCoord && (
+              <MapboxGL.MarkerView coordinate={driverCoord}>
+                <View style={styles.activePorter}>
+                  <Text style={styles.activePorterText}>P</Text>
+                </View>
+              </MapboxGL.MarkerView>
+            )}
           </MapboxGL.MapView>
 
           <Pressable

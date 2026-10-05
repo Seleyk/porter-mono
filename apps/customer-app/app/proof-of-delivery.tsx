@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, View, Pressable, Image, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,20 +7,30 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore } from "@/store/bookingStore";
+import { useLiveBooking } from "@/hooks/useLiveBooking";
+import { getProofPhotoUrl } from "@/services/booking";
 
 export default function ProofOfDeliveryScreen() {
   const insets = useSafeAreaInsets();
   const { colors, bgGradient } = useColors();
-  const { dropoff, dropoffMethod, porterBoxCode, selectedBoxName, reset } = useBookingStore();
-  const [captured, setCaptured] = useState(false);
-  const deliveryTime = useRef(new Date());
+  const { bookingId, dropoff, dropoffMethod, porterBoxCode, reset } = useBookingStore();
+  const { booking, porter, loading } = useLiveBooking(bookingId);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
-  const dateStr = deliveryTime.current.toLocaleDateString("en-US", {
+  // The porter's proof-of-delivery photo, from the private bucket.
+  const photoPath = booking?.proof_photo_path ?? null;
+  useEffect(() => {
+    if (photoPath) getProofPhotoUrl(photoPath).then(setPhotoUrl);
+  }, [photoPath]);
+
+  const deliveryTime = booking?.actual_dropoff_time ? new Date(booking.actual_dropoff_time) : new Date();
+  const dateStr = deliveryTime.toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
   });
-  const timeStr = deliveryTime.current.toLocaleTimeString("en-US", {
+  const timeStr = deliveryTime.toLocaleTimeString("en-US", {
     hour: "numeric", minute: "2-digit",
   });
+  const dropoffLabel = booking?.dropoff_address ?? dropoff;
 
   return (
     <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
@@ -99,44 +109,39 @@ export default function ProofOfDeliveryScreen() {
             </Text>
 
             <View style={styles.polaroid}>
-              {!captured ? (
-                <Pressable style={styles.viewfinder} onPress={() => setCaptured(true)}>
-                  <View style={styles.viewfinderInner}>
-                    <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
-                    <Text style={styles.viewfinderText}>Tap to capture photo proof</Text>
-                  </View>
-                  <View style={[styles.corner, { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 }]} />
-                  <View style={[styles.corner, { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 }]} />
-                  <View style={[styles.corner, { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
-                  <View style={[styles.corner, { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 }]} />
-                </Pressable>
+              {photoUrl ? (
+                <Image source={{ uri: photoUrl }} style={styles.proofPhoto} resizeMode="cover" />
               ) : (
                 <View style={styles.capturedPhoto}>
-                  <Ionicons name="checkmark-circle" size={48} color={Colors.steel} />
-                  <Text style={styles.capturedText}>Photo captured</Text>
-                  <Text style={styles.capturedSub}>{timeStr} · {dropoff || "Drop-off location"}</Text>
+                  {loading || (photoPath && !photoUrl) ? (
+                    <ActivityIndicator color={Colors.steel} />
+                  ) : (
+                    <Ionicons name="checkmark-circle" size={48} color={Colors.steel} />
+                  )}
+                  <Text style={styles.capturedText}>{photoPath ? "Loading photo" : "Delivered"}</Text>
+                  <Text style={styles.capturedSub}>{timeStr} · {dropoffLabel || "Drop-off location"}</Text>
                 </View>
               )}
               <View style={styles.polaroidCaption}>
-                <Text style={styles.polaroidLabel}>Delivery · Your Porter</Text>
+                <Text style={styles.polaroidLabel}>Delivery · {porter?.first_name ?? "Your Porter"}</Text>
                 <Text style={styles.polaroidDate}>{dateStr}</Text>
               </View>
             </View>
 
             <View style={styles.sigRow}>
               <View style={styles.sigIcon}>
-                <Ionicons name="create-outline" size={16} color={Colors.steel} />
+                <Ionicons name="camera-outline" size={16} color={Colors.steel} />
               </View>
-              <Text style={styles.sigText}>Signature confirmation on file</Text>
+              <Text style={styles.sigText}>Photo taken by your porter at drop-off</Text>
               <Ionicons name="checkmark-circle" size={18} color={Colors.steel} />
             </View>
 
             <View style={{ flex: 1 }} />
             <Pressable
-              style={({ pressed }) => [styles.cta, { opacity: captured ? pressed ? 0.85 : 1 : 0.5 }]}
-              onPress={() => { if (captured) router.replace("/complete"); }}
+              style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => router.replace("/complete")}
             >
-              <Text style={styles.ctaText}>Complete Delivery</Text>
+              <Text style={styles.ctaText}>Rate & tip</Text>
               <Ionicons name="chevron-forward" size={16} color="#fff" />
             </Pressable>
           </>
@@ -220,6 +225,11 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderColor: Colors.steel,
+  },
+  proofPhoto: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 2,
   },
   capturedPhoto: {
     height: 200,

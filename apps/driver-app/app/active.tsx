@@ -12,7 +12,7 @@ import { useActiveJob } from "@/hooks/useJobs";
 import { markDelivered, markPickedUp, releaseJob, uploadProofPhoto } from "@/services/jobs";
 import { fetchRoute } from "@/services/routes";
 import { JobMap } from "@/components/JobMap";
-import { Stops } from "@/components/JobCard";
+import { JobDetailsCard, Stops } from "@/components/JobCard";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { callPhone, openDirections } from "@/lib/navigation";
 import { dropoffOf, itemSummary, money, pickupOf } from "@/lib/format";
@@ -175,12 +175,7 @@ export default function ActiveJobScreen() {
           <Stops job={job} />
         </Card>
 
-        {job.special_instructions ? (
-          <Card style={{ gap: 6 }}>
-            <Text style={styles.label}>Customer note</Text>
-            <Text style={styles.body}>{job.special_instructions}</Text>
-          </Card>
-        ) : null}
+        <JobDetailsCard job={job} />
 
         {job.status === "accepted" ? (
           <>

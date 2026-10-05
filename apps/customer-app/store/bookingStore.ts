@@ -75,7 +75,7 @@ interface BookingState {
   setItemValueUSD: (v: number) => void;
   setCalculatedFare: (v: number) => void;
   setStorageHours: (hours: number) => void;
-  setBookingId: (id: string) => void;
+  setBookingId: (id: string | null) => void;
   setAssignedDriver: (name: string, initials: string, rating: number) => void;
   setPorterBoxOrder: (orderId: string, code: string, chargeCents: number) => void;
   setPorterBoxCode: (code: string) => void;

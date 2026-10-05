@@ -1,4 +1,4 @@
-import type { ServiceRequest } from "@porter/shared";
+import { parseBookingNotes, type ServiceRequest } from "@porter/shared";
 
 export function money(n: number | null | undefined): string {
   return `$${(n ?? 0).toFixed(2)}`;
@@ -45,4 +45,13 @@ export function pickupOf(job: ServiceRequest): [number, number] {
 
 export function dropoffOf(job: ServiceRequest): [number, number] {
   return [job.dropoff_longitude, job.dropoff_latitude];
+}
+
+/** The customer's note and the booking choices stored alongside it. */
+export function jobDetails(job: ServiceRequest) {
+  const parsed = parseBookingNotes(job.special_instructions);
+  const handoff =
+    parsed.dropoff === "box" ? `Porter Box${parsed.hub ? ` · ${parsed.hub}` : ""}` : parsed.dropoff === "door" ? "Hand to customer at the door" : null;
+  const speed = parsed.speed ? parsed.speed[0].toUpperCase() + parsed.speed.slice(1) : null;
+  return { note: parsed.note, handoff, speed };
 }

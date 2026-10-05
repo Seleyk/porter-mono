@@ -6,3 +6,4 @@ export * from "./porterFare";
 export * from "./demo";
 export * from "./theme";
 export * from "./directions";
+export * from "./bookingNotes";

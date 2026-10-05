@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ServiceRequest } from "@porter/shared";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-import { formatMiles, itemSummary, milesBetween, money } from "@/lib/format";
+import { formatMiles, itemSummary, jobDetails, milesBetween, money } from "@/lib/format";
 
 type Props = {
   job: ServiceRequest;
@@ -22,6 +22,34 @@ export function Stops({ job }: { job: ServiceRequest }) {
         <View style={[styles.dot, { backgroundColor: Colors.gold }]} />
         <Text style={styles.address} numberOfLines={2}>{job.dropoff_address}</Text>
       </View>
+    </View>
+  );
+}
+
+/** Hand-off method, speed and the customer's note, when there are any. */
+export function JobDetailsCard({ job }: { job: ServiceRequest }) {
+  const { note, handoff, speed } = jobDetails(job);
+  if (!note && !handoff && !speed) return null;
+  return (
+    <View style={[styles.card, { gap: 10 }]}>
+      {handoff && (
+        <View style={styles.detailRow}>
+          <Ionicons name="hand-left-outline" size={16} color={Colors.steel} />
+          <Text style={styles.detailText}>{handoff}</Text>
+        </View>
+      )}
+      {speed && (
+        <View style={styles.detailRow}>
+          <Ionicons name="flash-outline" size={16} color={Colors.steel} />
+          <Text style={styles.detailText}>{speed} delivery</Text>
+        </View>
+      )}
+      {note && (
+        <View style={{ gap: 4 }}>
+          <Text style={styles.noteLabel}>Customer note</Text>
+          <Text style={styles.detailText}>{note}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -74,5 +102,8 @@ const styles = StyleSheet.create({
   connector: { width: 1, height: 10, backgroundColor: Colors.divider, marginLeft: 3.5 },
   address: { flex: 1, color: Colors.text, fontFamily: Fonts.medium, fontSize: 14 },
   footer: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  detailText: { flex: 1, color: Colors.text, fontFamily: Fonts.regular, fontSize: 15, lineHeight: 21 },
+  noteLabel: { color: Colors.textDim, fontFamily: Fonts.medium, fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
   view: { color: Colors.steel, fontFamily: Fonts.semibold, fontSize: 13 },
 });
