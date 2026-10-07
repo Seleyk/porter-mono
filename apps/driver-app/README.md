@@ -51,8 +51,13 @@ They can tap **Check again** and start driving.
 While online or on a job the app publishes the porter's position to `porter_locations`
 every ~25 m; customers can read it only while that porter is on their job.
 
+## Getting paid
+
+Prices in the app are what the porter earns: their share of the job (65%) plus any tip.
+On the Profile tab the porter sets up payouts on Stripe's own pages (Stripe Connect Express),
+then comes back to the app through `porterdriver://payouts`. Completing a job sends their share
+to their Stripe account; Stripe pays out to their bank on its schedule. See `supabase/README.md`.
+
 ## Not yet
 
-- Payouts (Stripe Connect). The Jobs tab shows job totals, not earnings.
 - Location while the app is in the background.
-- The customer app still simulates its porter; it doesn't yet read the real one.

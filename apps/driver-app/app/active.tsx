@@ -15,7 +15,7 @@ import { JobMap } from "@/components/JobMap";
 import { JobDetailsCard, Stops } from "@/components/JobCard";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { callPhone, openDirections } from "@/lib/navigation";
-import { dropoffOf, itemSummary, money, pickupOf } from "@/lib/format";
+import { dropoffOf, itemSummary, money, pickupOf, earnings } from "@/lib/format";
 
 type Photo = { uri: string; mimeType: string };
 
@@ -116,7 +116,7 @@ export default function ActiveJobScreen() {
         </View>
         <Eyebrow>Delivered</Eyebrow>
         <Text style={styles.doneTitle}>Nice work</Text>
-        <Text style={styles.doneAmount}>{money(completed.total_price ?? completed.base_price)}</Text>
+        <Text style={styles.doneAmount}>{money(earnings(completed))}</Text>
         <Text style={styles.muted}>{completed.dropoff_address}</Text>
         <Button label="Back to jobs" onPress={() => router.replace("/(tabs)")} style={{ alignSelf: "stretch", marginTop: 12 }} />
       </View>
@@ -161,7 +161,7 @@ export default function ActiveJobScreen() {
         <View style={{ gap: 6 }}>
           <Eyebrow>{heading === "pickup" ? "Step 1 · Pick up" : "Step 2 · Deliver"}</Eyebrow>
           <Text style={styles.address}>{address}</Text>
-          <Text style={styles.meta}>{itemSummary(job)} · {money(job.total_price ?? job.base_price)}</Text>
+          <Text style={styles.meta}>{itemSummary(job)} · {money(earnings(job))}</Text>
         </View>
 
         <View style={styles.actionsRow}>

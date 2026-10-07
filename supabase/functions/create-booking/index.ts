@@ -62,7 +62,7 @@ serve(async (req) => {
 
   const route = await routeBetween(pickup, dropoff, Deno.env.get("MAPBOX_TOKEN"));
   const quote = quoteDelivery({ ...route, itemValueUSD, itemCounts });
-  const { priceUSD } = quote.prices[speed as DeliverySpeed];
+  const { priceUSD, porterPayoutUSD } = quote.prices[speed as DeliverySpeed];
   if (priceUSD < 1) throw new HttpError(400, "This trip is too short to price.");
 
   const itemCount = itemCounts.large + itemCounts.standard + itemCounts.small;
@@ -83,6 +83,7 @@ serve(async (req) => {
       dropoff_longitude: dropoff.lng,
       base_price: priceUSD,
       total_price: priceUSD,
+      porter_payout: porterPayoutUSD,
       tip_amount: 0,
       status: "pending",
       payment_status: "pending",

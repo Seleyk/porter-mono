@@ -1,9 +1,91 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, AppState, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Fonts } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/context/OnlineContext";
 import { Button, Card, Eyebrow, StatusPill } from "@/components/ui";
+import { getPayoutStatus, payoutDashboardUrl, payoutSetupUrl, type PayoutStatus } from "@/services/payouts";
+
+const PAYOUT_COPY: Record<PayoutStatus["state"], { pill: string; color: string; text: string }> = {
+  not_started: {
+    pill: "Not set up",
+    color: Colors.gold,
+    text: "Add your bank details with Stripe to get paid. Jobs you finish before then are paid once you're set up.",
+  },
+  incomplete: {
+    pill: "Unfinished",
+    color: Colors.gold,
+    text: "Stripe still needs a few details before it can pay you.",
+  },
+  pending: {
+    pill: "Being verified",
+    color: Colors.steel,
+    text: "Stripe is checking your details. This usually takes a few minutes, sometimes a day.",
+  },
+  enabled: {
+    pill: "Active",
+    color: Colors.evergreen,
+    text: "Your share of each job is sent to Stripe when you complete it, and tips go to you in full. Stripe pays out to your bank on its regular schedule.",
+  },
+};
+
+function PayoutsCard() {
+  const [status, setStatus] = useState<PayoutStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  const refresh = useCallback(() => {
+    getPayoutStatus()
+      .then((s) => {
+        setStatus(s);
+        setError(null);
+        if (s.paidNow) Alert.alert("Earnings sent", `We've sent your earnings for ${s.paidNow} earlier payment${s.paidNow === 1 ? "" : "s"} to Stripe.`);
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  // Refresh when the tab opens and when the porter comes back from Stripe.
+  useFocusEffect(refresh);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => state === "active" && refresh());
+    return () => sub.remove();
+  }, [refresh]);
+
+  const open = async (getUrl: () => Promise<string>) => {
+    setOpening(true);
+    try {
+      await Linking.openURL(await getUrl());
+    } catch (e: any) {
+      Alert.alert("Couldn't open Stripe", e.message ?? "Please try again.");
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const copy = status ? PAYOUT_COPY[status.state] : null;
+
+  return (
+    <Card style={{ gap: 10 }}>
+      <View style={styles.payoutHeader}>
+        <Eyebrow>Payouts</Eyebrow>
+        {copy && <StatusPill label={copy.pill} color={copy.color} />}
+      </View>
+      <Text style={styles.payoutText}>{error ?? copy?.text ?? "Checking your payout account…"}</Text>
+      {status && status.state !== "enabled" && status.state !== "pending" && (
+        <Button
+          label={status.state === "not_started" ? "Set up payouts" : "Finish setting up"}
+          loading={opening}
+          onPress={() => open(payoutSetupUrl)}
+        />
+      )}
+      {status && (status.state === "enabled" || status.state === "pending") && (
+        <Button label="View earnings in Stripe" variant="secondary" loading={opening} onPress={() => open(payoutDashboardUrl)} />
+      )}
+    </Card>
+  );
+}
 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -51,6 +133,8 @@ export default function ProfileScreen() {
         <StatusPill label="Approved porter" color={Colors.evergreen} />
       </View>
 
+      <PayoutsCard />
+
       <Card style={{ gap: 4 }}>
         <Eyebrow>Contact</Eyebrow>
         <Row label="Phone" value={profile?.phone} />
@@ -83,5 +167,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8 },
   rowLabel: { color: Colors.textMuted, fontFamily: Fonts.regular, fontSize: 15 },
   rowValue: { color: Colors.text, fontFamily: Fonts.medium, fontSize: 15 },
+  payoutHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  payoutText: { color: Colors.textMuted, fontFamily: Fonts.regular, fontSize: 14, lineHeight: 20 },
   note: { color: Colors.textDim, fontFamily: Fonts.regular, fontSize: 12, textAlign: "center" },
 });

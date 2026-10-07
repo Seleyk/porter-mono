@@ -1,7 +1,16 @@
-import { parseBookingNotes, type ServiceRequest } from "@porter/shared";
+import { PORTER_RATES, parseBookingNotes, type ServiceRequest } from "@porter/shared";
 
 export function money(n: number | null | undefined): string {
   return `$${(n ?? 0).toFixed(2)}`;
+}
+
+/**
+ * What the porter earns for a job: their share of the price (set by the
+ * server when the job is booked) plus any tip.
+ */
+export function earnings(job: { porter_payout?: number | null; base_price?: number | null; tip_amount?: number | null }): number {
+  const share = job.porter_payout ?? (job.base_price ?? 0) * PORTER_RATES.DRIVER_PCT;
+  return Math.round((share + (job.tip_amount ?? 0)) * 100) / 100;
 }
 
 const SERVICE_LABELS: Record<string, string> = {

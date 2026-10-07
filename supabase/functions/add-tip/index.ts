@@ -3,9 +3,11 @@
 // POST { bookingId, amountUSD }        → { clientSecret }  (show the payment sheet)
 // POST { bookingId, confirm: true }    → { booking }       (after the sheet succeeds)
 //
-// The tip is only recorded on the booking once Stripe says it's paid.
+// The tip is only recorded on the booking once Stripe says it's paid, then
+// goes to the porter in full.
 
 import { adminClient, HttpError, json, requireUser, serve, stripe, toCents, userClient } from "../_shared/http.ts";
+import { payOutTip } from "../_shared/payouts.ts";
 
 const MAX_TIP_USD = 500;
 
@@ -38,6 +40,7 @@ serve(async (req) => {
       .select()
       .single();
     if (error) throw error;
+    await payOutTip(admin, booking.id).catch((err) => console.error(`Tip payout failed for ${booking.id}`, err));
     return json({ booking: updated });
   }
 

@@ -10,7 +10,7 @@ import { useActiveJob, useNearbyJobs } from "@/hooks/useJobs";
 import { JobMap, type MapPin } from "@/components/JobMap";
 import { JobCard, Stops } from "@/components/JobCard";
 import { Button, Card, Eyebrow, StatusPill } from "@/components/ui";
-import { money, pickupOf } from "@/lib/format";
+import { money, pickupOf, earnings } from "@/lib/format";
 
 export default function DriveScreen() {
   const insets = useSafeAreaInsets();
@@ -64,7 +64,7 @@ export default function DriveScreen() {
               <Text style={styles.sectionTitle}>
                 {activeJob.status === "picked_up" ? "Delivering now" : "Heading to pickup"}
               </Text>
-              <Text style={styles.price}>{money(activeJob.total_price ?? activeJob.base_price)}</Text>
+              <Text style={styles.price}>{money(earnings(activeJob))}</Text>
             </View>
             <Stops job={activeJob} />
             <Button label="Continue job" icon="chevron-forward" onPress={() => router.push("/active")} />

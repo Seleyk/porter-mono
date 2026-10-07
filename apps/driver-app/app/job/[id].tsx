@@ -11,7 +11,7 @@ import { fetchRoute } from "@/services/routes";
 import { JobMap } from "@/components/JobMap";
 import { JobDetailsCard, Stops } from "@/components/JobCard";
 import { Button, Card, Eyebrow } from "@/components/ui";
-import { dropoffOf, formatMiles, itemSummary, milesBetween, money, pickupOf } from "@/lib/format";
+import { dropoffOf, formatMiles, itemSummary, milesBetween, money, pickupOf, earnings } from "@/lib/format";
 
 export default function JobDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -90,7 +90,7 @@ export default function JobDetailScreen() {
             <View style={styles.rowBetween}>
               <View style={{ gap: 4 }}>
                 <Eyebrow>{itemSummary(job)}</Eyebrow>
-                <Text style={styles.price}>{money(job.total_price ?? job.base_price)}</Text>
+                <Text style={styles.price}>{money(earnings(job))}</Text>
               </View>
               <View style={{ alignItems: "flex-end", gap: 2 }}>
                 {toPickup !== null && <Text style={styles.stat}>{formatMiles(toPickup)} to pickup</Text>}

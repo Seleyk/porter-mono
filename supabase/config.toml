@@ -435,3 +435,11 @@ verify_jwt = true
 
 [functions.add-tip]
 verify_jwt = true
+
+[functions.porter-payouts]
+verify_jwt = true
+
+# Stripe redirects the porter's browser here after payout sign-up; it only
+# sends them back to the driver app, so it can't require a session.
+[functions.stripe-return]
+verify_jwt = false

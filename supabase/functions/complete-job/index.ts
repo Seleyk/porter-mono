@@ -1,9 +1,10 @@
 // The porter finishes a delivery: marks the job completed (with the proof
-// photo) and captures the customer's card hold.
+// photo), captures the customer's card hold and pays the porter their share.
 //
 // POST { jobId, photoPath } → { job }
 
 import { adminClient, HttpError, json, requireUser, rpcError, serve, stripe, userClient } from "../_shared/http.ts";
+import { payOutJob } from "../_shared/payouts.ts";
 
 serve(async (req) => {
   const db = userClient(req);
@@ -38,12 +39,18 @@ serve(async (req) => {
     paymentStatus = "failed";
   }
 
-  const { data: updated, error: updateError } = await adminClient()
+  const admin = adminClient();
+  const { error: updateError } = await admin
     .from("service_requests")
     .update({ payment_status: paymentStatus })
-    .eq("id", jobId)
-    .select()
-    .single();
+    .eq("id", jobId);
   if (updateError) throw updateError;
+
+  // Owed (not lost) if the porter hasn't set up payouts or the transfer fails.
+  if (paymentStatus === "completed") {
+    await payOutJob(admin, jobId).catch((err) => console.error(`Payout failed for job ${jobId}`, err));
+  }
+
+  const { data: updated } = await admin.from("service_requests").select().eq("id", jobId).single();
   return json({ job: updated });
 });

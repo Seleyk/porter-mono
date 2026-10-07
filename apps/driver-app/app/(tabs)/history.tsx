@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchJobHistory } from "@/services/jobs";
 import { Stops } from "@/components/JobCard";
 import { Card, Eyebrow, StatusPill } from "@/components/ui";
-import { itemSummary, money, shortDate } from "@/lib/format";
+import { itemSummary, money, shortDate, earnings } from "@/lib/format";
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -36,7 +36,7 @@ export default function HistoryScreen() {
   );
 
   const completed = jobs.filter((j) => j.status === "completed");
-  const total = completed.reduce((sum, j) => sum + (j.total_price ?? j.base_price ?? 0), 0);
+  const total = completed.reduce((sum, j) => sum + earnings(j), 0);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -54,7 +54,7 @@ export default function HistoryScreen() {
                 <Text style={styles.summaryValue}>{completed.length}</Text>
               </View>
               <View style={{ gap: 4, alignItems: "flex-end" }}>
-                <Eyebrow>Job totals</Eyebrow>
+                <Eyebrow>You earned</Eyebrow>
                 <Text style={styles.summaryValue}>{money(total)}</Text>
               </View>
             </Card>
@@ -73,7 +73,7 @@ export default function HistoryScreen() {
           <Card style={{ gap: 12 }}>
             <View style={styles.row}>
               <View style={{ gap: 2, flex: 1 }}>
-                <Text style={styles.price}>{money(item.total_price ?? item.base_price)}</Text>
+                <Text style={styles.price}>{money(earnings(item))}</Text>
                 <Text style={styles.meta}>
                   {itemSummary(item)} · {shortDate(item.actual_dropoff_time ?? item.created_at)}
                 </Text>

@@ -88,6 +88,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
               <Stack.Screen name="job/[id]" options={{ animation: "slide_from_bottom" }} />
               <Stack.Screen name="active" options={{ animation: "fade", gestureEnabled: false }} />
+              <Stack.Screen name="payouts" options={{ animation: "none" }} />
             </Stack>
           </View>
         </RouteGuard>

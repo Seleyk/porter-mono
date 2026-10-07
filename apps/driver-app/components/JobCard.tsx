@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ServiceRequest } from "@porter/shared";
 import { Colors, Fonts, Radius } from "@/constants/theme";
-import { formatMiles, itemSummary, jobDetails, milesBetween, money } from "@/lib/format";
+import { formatMiles, itemSummary, jobDetails, milesBetween, money, earnings } from "@/lib/format";
 
 type Props = {
   job: ServiceRequest;
@@ -64,7 +64,7 @@ export function JobCard({ job, from, onPress }: Props) {
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}>
       <View style={styles.header}>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={styles.price}>{money(job.total_price ?? job.base_price)}</Text>
+          <Text style={styles.price}>{money(earnings(job))}</Text>
           <Text style={styles.meta}>{itemSummary(job)}</Text>
         </View>
         <View style={{ alignItems: "flex-end", gap: 2 }}>

@@ -64,7 +64,16 @@ Bookings are created and paid for through edge functions, never inserted by the 
 | `confirm-booking` | customer | after the payment sheet: checks the hold with Stripe, sets `payment_status = processing`; only then do porters see the job |
 | `cancel-booking` | customer | `cancel_request`, then releases the hold (`refunded`) |
 | `complete-job` | porter | `advance_request(..., 'completed')`, then captures the hold (`completed`, or `failed` for staff to follow up) |
-| `add-tip` | customer | charges a tip as its own payment and records it once paid |
+| `add-tip` | customer | charges a tip as its own payment, records it once paid and sends it to the porter |
+| `porter-payouts` | porter | Stripe Connect: payout sign-up link, status, Express dashboard link; pays owed jobs once enabled |
+| `stripe-return` | public | where Stripe sends the porter after sign-up; redirects to `porterdriver://payouts` |
+
+**Porter payouts.** Each porter has a Stripe Connect Express account (`profiles.stripe_account_id`,
+`payouts_enabled`). `create-booking` stores the porter's share (`porter_payout`, 65%); `complete-job`
+transfers it right after capturing the charge, and `add-tip` transfers tips in full. Transfers are
+funded by the customer's charge (`source_transaction`), so they don't need a platform balance. A
+porter who hasn't finished sign-up is paid for earlier jobs when `porter-payouts` sees them enabled.
+Connect must be turned on in the Stripe dashboard (Connect > Get started, platform, Express accounts).
 
 Prices come from `functions/_shared/porterFare.ts` (re-exported by `@porter/shared`, so the apps and
 the server share one copy) and `functions/_shared/deliveryQuote.ts` (speed multipliers). Route
@@ -73,7 +82,7 @@ distance comes from Mapbox when the `MAPBOX_TOKEN` secret is set, otherwise a st
 Deploying:
 
 ```sh
-npx supabase db push                                   # the booking_payments migration
+npx supabase db push                                   # booking_payments and porter_payouts migrations
 npx supabase secrets set MAPBOX_TOKEN=pk...            # same token as the apps' EXPO_PUBLIC_MAPBOX_TOKEN
 npx supabase functions deploy                          # every function in supabase/functions
 npx supabase functions delete create-payment-intent   # old, unauthenticated; no longer used
@@ -84,7 +93,7 @@ about 7 days, so a scheduled delivery further out than that needs a different ap
 
 ## Still open
 
-- No porter payouts yet (Stripe Connect). No Stripe webhook yet: if the app closes between
+- No Stripe webhook yet: if the app closes between
   paying and `confirm-booking`/`add-tip` confirming, the booking or tip isn't recorded.
 - `create-porter-box-order` still trusts the amount the phone sends.
 - `service_type` allows `luggage | shopping | packages`; the app maps parcels and other to `packages`.
