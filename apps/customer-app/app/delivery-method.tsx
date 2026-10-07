@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, View, Pressable, Alert, Modal } from "react-native";
 import { useStripe } from "@stripe/stripe-react-native";
 import { router } from "expo-router";
@@ -10,7 +10,15 @@ import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useBookingStore, type DeliverySpeed } from "@/store/bookingStore";
 import { fetchRoute } from "@/services/directions";
-import { calculateFare, type LuggageSize, mapStyleFor } from "@porter/shared";
+import {
+  cancelBooking,
+  confirmBooking,
+  createBooking,
+  quoteDelivery,
+  type DeliveryQuote,
+  type PendingBooking,
+} from "@/services/booking";
+import { MIAMI_CENTER, mapStyleFor } from "@porter/shared";
 
 const METHODS = [
   {
@@ -18,7 +26,6 @@ const METHODS = [
     icon: "flash-outline" as const,
     label: "Priority",
     eta: "15–25 min",
-    price: "$28",
     desc: "Next available porter, dispatched immediately.",
   },
   {
@@ -26,7 +33,6 @@ const METHODS = [
     icon: "bicycle-outline" as const,
     label: "Standard",
     eta: "35–55 min",
-    price: "$18",
     desc: "Efficient delivery at a relaxed pace.",
   },
   {
@@ -34,7 +40,6 @@ const METHODS = [
     icon: "calendar-outline" as const,
     label: "Scheduled",
     eta: "Choose time",
-    price: "From $16",
     desc: "Book a porter for later today or any future date.",
   },
 ];
@@ -47,37 +52,28 @@ const PORTER_OFFSETS = [
   { id: "LO", dlng:  0.010, dlat:  0.001 },
 ];
 
-const SPEED_MULTIPLIERS: Record<DeliverySpeed, number> = {
-  priority:  1.00,
-  standard:  0.85,
-  scheduled: 0.75,
-};
-
-function getLuggageSize(counts: { large: number; standard: number; small: number }): LuggageSize {
-  const total = counts.large + counts.standard + counts.small;
-  if (total === 0) return "NONE";
-  if (counts.large > 0 || total >= 3) return "LARGE";
-  return "SMALL";
-}
-
 export default function DeliveryMethodScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, bgGradient } = useColors();
-  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare } = useBookingStore();
+  const store = useBookingStore();
+  const { deliverySpeed, setDeliverySpeed, pickupCoords, dropoffCoords, itemValueUSD, itemCounts, setCalculatedFare, setBookingId } = store;
   const [method, setMethod] = useState<DeliverySpeed>(deliverySpeed);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [mapExpanded, setMapExpanded] = useState(false);
-  const [paymentReady, setPaymentReady] = useState(false);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [baseFare, setBaseFare] = useState(0);
+  const [quote, setQuote] = useState<DeliveryQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [booking, setBooking] = useState(false);
+  // A booking saved for the chosen speed whose payment isn't confirmed yet.
+  // Reused if the customer closes the payment sheet and tries again.
+  const draft = useRef<(PendingBooking & { speed: DeliverySpeed }) | null>(null);
 
-  const tierPrice = (speed: DeliverySpeed) =>
-    Math.round(baseFare * SPEED_MULTIPLIERS[speed] * 100) / 100;
+  const tierPrice = (speed: DeliverySpeed) => quote?.prices[speed].priceUSD ?? 0;
 
-  const pickupLng  = pickupCoords?.lng  ?? -73.9967;
-  const pickupLat  = pickupCoords?.lat  ?? 40.7484;
-  const dropoffLng = dropoffCoords?.lng ?? -73.9950;
-  const dropoffLat = dropoffCoords?.lat ?? 40.7467;
+  const [fallbackLng, fallbackLat] = MIAMI_CENTER;
+  const pickupLng  = pickupCoords?.lng  ?? fallbackLng;
+  const pickupLat  = pickupCoords?.lat  ?? fallbackLat;
+  const dropoffLng = dropoffCoords?.lng ?? fallbackLng + 0.005;
+  const dropoffLat = dropoffCoords?.lat ?? fallbackLat + 0.01;
   const pickupCoord:  [number, number] = [pickupLng,  pickupLat];
   const dropoffCoord: [number, number] = [dropoffLng, dropoffLat];
 
@@ -92,72 +88,86 @@ export default function DeliveryMethodScreen() {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([pickupCoord, dropoffCoord]);
 
   useEffect(() => {
-    fetchRoute(pickupCoord, dropoffCoord).then(({ coords, distanceMiles, durationMinutes }) => {
-      setRouteCoords(coords);
-      const result = calculateFare({
-        service: "DELIVERY",
-        itemValueUSD: itemValueUSD ?? 50,
-        distanceMiles,
-        durationMinutes,
-        luggageSize: getLuggageSize(itemCounts),
-      });
-      setBaseFare(result.success ? result.fare.totalFareUSD : 0);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (baseFare > 0) initializePaymentSheet();
-  }, [method, baseFare]);
-
-  async function initializePaymentSheet() {
-    setPaymentReady(false);
-    setPaymentLoading(true);
-    try {
-      const res = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-payment-intent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Math.round(tierPrice(method) * 100) }),
-        }
-      );
-      const { clientSecret, error: fnError } = await res.json();
-      if (fnError || !clientSecret) throw new Error(fnError ?? "No clientSecret");
-
-      const { error } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: "Porter",
-        returnURL: "porter://stripe-redirect",
-        style: isDark ? "alwaysDark" : "alwaysLight",
-        applePay: { merchantCountryCode: "US" },
-        appearance: {
-          colors: {
-            primary: isDark ? "#6FA3C8" : "#4A7FA8",
-            background: isDark ? "#050B16" : "#FFFFFF",
-            componentBackground: isDark ? "#0B2A4A" : "#F4F6F8",
-            componentText: isDark ? "#F4F6F8" : "#0E0F12",
-            placeholderText: isDark ? "#F4F6F866" : "#0E0F1266",
-          },
-        },
-      });
-      if (!error) setPaymentReady(true);
-    } catch (e) {
-      console.error("Payment init failed:", e);
-    } finally {
-      setPaymentLoading(false);
-    }
-  }
-
-  async function handleConfirmAndBook() {
-    if (!paymentReady) return;
-    const { error } = await presentPaymentSheet();
-    if (error) {
-      if (error.code !== "Canceled") Alert.alert("Payment failed", error.message);
+    fetchRoute(pickupCoord, dropoffCoord).then(({ coords }) => setRouteCoords(coords));
+    if (!pickupCoords || !dropoffCoords) {
+      setQuoteError("Choose both addresses from the suggestions to see prices.");
       return;
     }
-    setDeliverySpeed(method);
-    setCalculatedFare(tierPrice(method));
-    router.push("/finding-porter");
+    quoteDelivery({ pickup: pickupCoords, dropoff: dropoffCoords, itemValueUSD, itemCounts })
+      .then(setQuote)
+      .catch((e) => setQuoteError(e.message ?? "Couldn't get prices. Go back and try again."));
+  }, []);
+
+  // Leaving without paying: release the unpaid booking.
+  useEffect(() => () => {
+    if (draft.current) cancelBooking(draft.current.bookingId).catch(() => {});
+  }, []);
+
+  async function bookingFor(speed: DeliverySpeed): Promise<PendingBooking> {
+    if (draft.current?.speed === speed) return draft.current;
+    if (draft.current) {
+      cancelBooking(draft.current.bookingId).catch(() => {});
+      draft.current = null;
+    }
+    const created = await createBooking({
+      pickup: store.pickup,
+      dropoff: store.dropoff,
+      pickupCoords: pickupCoords!,
+      dropoffCoords: dropoffCoords!,
+      itemType: store.itemType ?? "other",
+      itemCounts,
+      itemValueUSD,
+      specialRequests: store.specialRequests,
+      dropoffMethod: store.dropoffMethod,
+      selectedBoxName: store.selectedBoxName,
+      deliverySpeed: speed,
+    });
+    const { error } = await initPaymentSheet({
+      paymentIntentClientSecret: created.clientSecret,
+      merchantDisplayName: "Porter",
+      returnURL: "porter://stripe-redirect",
+      style: isDark ? "alwaysDark" : "alwaysLight",
+      applePay: { merchantCountryCode: "US" },
+      appearance: {
+        colors: {
+          primary: isDark ? "#6FA3C8" : "#4A7FA8",
+          background: isDark ? "#050B16" : "#FFFFFF",
+          componentBackground: isDark ? "#0B2A4A" : "#F4F6F8",
+          componentText: isDark ? "#F4F6F8" : "#0E0F12",
+          placeholderText: isDark ? "#F4F6F866" : "#0E0F1266",
+        },
+      },
+    });
+    if (error) {
+      cancelBooking(created.bookingId).catch(() => {});
+      throw new Error(error.message);
+    }
+    draft.current = { ...created, speed };
+    return draft.current;
+  }
+
+  // Your card is authorized now and charged when the porter completes the delivery.
+  async function handleConfirmAndBook() {
+    if (!quote || booking) return;
+    setBooking(true);
+    try {
+      const pending = await bookingFor(method);
+      const { error } = await presentPaymentSheet();
+      if (error) {
+        if (error.code !== "Canceled") Alert.alert("Payment failed", error.message);
+        return;
+      }
+      await confirmBooking(pending.bookingId);
+      draft.current = null;
+      setDeliverySpeed(method);
+      setCalculatedFare(pending.amountUSD);
+      setBookingId(pending.bookingId);
+      router.push("/finding-porter");
+    } catch (e: any) {
+      Alert.alert("Couldn't place your booking", e.message ?? "Please try again.");
+    } finally {
+      setBooking(false);
+    }
   }
 
   const mapMarkers = (
@@ -262,7 +272,7 @@ export default function DeliveryMethodScreen() {
                 </View>
                 <View style={styles.methodRight}>
                   <Text style={[styles.methodPrice, active && styles.methodPriceActive]}>
-                  {baseFare > 0 ? `$${tierPrice(m.id as DeliverySpeed).toFixed(2)}` : m.price}
+                  {quote ? `$${tierPrice(m.id as DeliverySpeed).toFixed(2)}` : "—"}
                 </Text>
                   <Text style={styles.methodEta}>{m.eta}</Text>
                 </View>
@@ -278,21 +288,21 @@ export default function DeliveryMethodScreen() {
           <View style={styles.paymentLeft}>
             <Ionicons name="card-outline" size={16} color={colors.textMuted} />
             <Text style={[styles.paymentText, { color: colors.text }]}>
-              {paymentLoading ? "Loading payment…" : "Pay with card"}
+              {quoteError ?? (quote ? "Card held now, charged on delivery" : "Getting prices…")}
             </Text>
           </View>
           <Text style={[styles.paymentTotal, { color: colors.text }]}>
-            {baseFare > 0 ? `$${tierPrice(method).toFixed(2)}` : "—"}
+            {quote ? `$${tierPrice(method).toFixed(2)}` : "—"}
           </Text>
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.cta, { opacity: paymentReady ? (pressed ? 0.85 : 1) : 0.5 }]}
+          style={({ pressed }) => [styles.cta, { opacity: quote && !booking ? (pressed ? 0.85 : 1) : 0.5 }]}
           onPress={handleConfirmAndBook}
-          disabled={!paymentReady || paymentLoading}
+          disabled={!quote || booking}
         >
           <Text style={styles.ctaText}>
-            {paymentLoading ? "Preparing…" : "Confirm & Book"}
+            {booking ? "Booking…" : "Confirm & Book"}
           </Text>
           <Ionicons name="chevron-forward" size={16} color="#fff" />
         </Pressable>

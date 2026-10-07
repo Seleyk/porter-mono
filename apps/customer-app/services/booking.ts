@@ -1,77 +1,69 @@
 import { supabase } from "@/lib/supabase";
-import { ServiceRequest } from "@porter/shared";
-import { ItemType, DeliverySpeed } from "@/store/bookingStore";
+import { callFunction, type PorterLocation, type Profile, type ServiceRequest } from "@porter/shared";
+import type { DeliverySpeed, ItemType, LatLng } from "@/store/bookingStore";
 
-type ServiceType = "luggage" | "shopping" | "packages";
-type ItemSize = "small" | "medium" | "large";
+// ─── Pricing, booking and payment ─────────────────────────────────────────────
+// Prices are calculated by the server and bookings are created there, with a
+// card hold (supabase/functions/create-booking). The card is only charged when
+// the porter completes the job, and the hold is released on cancel.
 
-function toServiceType(itemType: ItemType): ServiceType {
-  if (itemType === "luggage") return "luggage";
-  if (itemType === "shopping") return "shopping";
-  return "packages"; // parcels + other
+export type QuotedSpeed = { priceUSD: number; porterPayoutUSD: number };
+export interface DeliveryQuote {
+  distanceMiles: number;
+  durationMinutes: number;
+  prices: Record<DeliverySpeed, QuotedSpeed>;
 }
 
-function toDominantSize(counts: { large: number; standard: number; small: number }): ItemSize {
-  if (counts.large >= counts.standard && counts.large >= counts.small) return "large";
-  if (counts.small > counts.large && counts.small >= counts.standard) return "small";
-  return "medium";
-}
+type Counts = { large: number; standard: number; small: number };
 
-// Placeholder until Mapbox geocoding is wired — defaults to Midtown Manhattan
-const NYC_LAT = 40.7549;
-const NYC_LNG = -73.984;
+export function quoteDelivery(params: {
+  pickup: LatLng;
+  dropoff: LatLng;
+  itemValueUSD: number | null;
+  itemCounts: Counts;
+}): Promise<DeliveryQuote> {
+  return callFunction(supabase, "quote-delivery", params);
+}
 
 interface CreateBookingParams {
-  customerId: string;
   pickup: string;
   dropoff: string;
-  pickupCoords?: { lat: number; lng: number } | null;
-  dropoffCoords?: { lat: number; lng: number } | null;
+  pickupCoords: LatLng;
+  dropoffCoords: LatLng;
   itemType: ItemType;
-  itemCounts: { large: number; standard: number; small: number };
+  itemCounts: Counts;
+  itemValueUSD: number | null;
   specialRequests: string;
   dropoffMethod: "door" | "box";
   selectedBoxName: string | null;
   deliverySpeed: DeliverySpeed;
-  fareUSD: number;
 }
 
-export async function createBooking(params: CreateBookingParams): Promise<ServiceRequest> {
-  const basePrice = params.fareUSD;
-  const itemCount = params.itemCounts.large + params.itemCounts.standard + params.itemCounts.small;
+export interface PendingBooking {
+  bookingId: string;
+  clientSecret: string;
+  amountUSD: number;
+}
 
-  // Serialize extra metadata alongside any user notes
-  const metaParts: string[] = [];
-  if (params.specialRequests) metaParts.push(params.specialRequests);
-  metaParts.push(
-    `[speed:${params.deliverySpeed}]`,
-    `[dropoff:${params.dropoffMethod}]`,
-    `[counts:L${params.itemCounts.large}/M${params.itemCounts.standard}/S${params.itemCounts.small}]`,
-  );
-  if (params.selectedBoxName) metaParts.push(`[hub:${params.selectedBoxName}]`);
+/** Saves an unpaid booking and returns the payment to confirm with the payment sheet. */
+export function createBooking(p: CreateBookingParams): Promise<PendingBooking> {
+  return callFunction(supabase, "create-booking", {
+    pickup: { address: p.pickup, ...p.pickupCoords },
+    dropoff: { address: p.dropoff, ...p.dropoffCoords },
+    itemType: p.itemType,
+    itemCounts: p.itemCounts,
+    itemValueUSD: p.itemValueUSD,
+    speed: p.deliverySpeed,
+    dropoffMethod: p.dropoffMethod,
+    hubName: p.selectedBoxName,
+    specialRequests: p.specialRequests,
+  });
+}
 
-  const { data, error } = await supabase
-    .from("service_requests")
-    .insert({
-      customer_id: params.customerId,
-      service_type: toServiceType(params.itemType),
-      item_count: Math.max(1, itemCount),
-      item_size: toDominantSize(params.itemCounts),
-      pickup_address: params.pickup,
-      pickup_latitude: params.pickupCoords?.lat ?? NYC_LAT,
-      pickup_longitude: params.pickupCoords?.lng ?? NYC_LNG,
-      dropoff_address: params.dropoff,
-      dropoff_latitude: params.dropoffCoords?.lat ?? (NYC_LAT + 0.01),
-      dropoff_longitude: params.dropoffCoords?.lng ?? (NYC_LNG + 0.005),
-      base_price: basePrice,
-      total_price: basePrice,
-      special_instructions: metaParts.join(" ") || null,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+/** After the payment sheet succeeds: puts the booking on the porters' job board. */
+export async function confirmBooking(bookingId: string): Promise<ServiceRequest> {
+  const { booking } = await callFunction<{ booking: ServiceRequest }>(supabase, "confirm-booking", { bookingId });
+  return booking;
 }
 
 export async function getBooking(bookingId: string): Promise<ServiceRequest | null> {
@@ -88,20 +80,24 @@ export async function getCustomerBookings(customerId: string): Promise<ServiceRe
     .from("service_requests")
     .select("*")
     .eq("customer_id", customerId)
+    .neq("payment_status", "pending") // drop bookings whose payment was never confirmed
     .order("created_at", { ascending: false });
   return data ?? [];
 }
 
-// Job changes go through database functions that check who may do what
-// (supabase/migrations/*_job_functions.sql).
+/** Cancels the booking and releases the card hold. */
 export async function cancelBooking(bookingId: string): Promise<void> {
-  const { error } = await supabase.rpc("cancel_request", { request_id: bookingId });
-  if (error) throw error;
+  await callFunction(supabase, "cancel-booking", { bookingId });
 }
 
-export async function addTip(bookingId: string, tipAmount: number): Promise<void> {
-  const { error } = await supabase.rpc("add_tip", { request_id: bookingId, amount: tipAmount });
-  if (error) throw error;
+/** Starts a tip payment; confirm it with the payment sheet, then call confirmTip. */
+export async function startTip(bookingId: string, amountUSD: number): Promise<string> {
+  const { clientSecret } = await callFunction<{ clientSecret: string }>(supabase, "add-tip", { bookingId, amountUSD });
+  return clientSecret;
+}
+
+export async function confirmTip(bookingId: string): Promise<void> {
+  await callFunction(supabase, "add-tip", { bookingId, confirm: true });
 }
 
 // Realtime subscription to booking status changes
@@ -123,4 +119,47 @@ export function subscribeToBooking(
     )
     .subscribe();
   return { unsubscribe: () => supabase.removeChannel(channel) };
+}
+
+// ─── The assigned porter ──────────────────────────────────────────────────────
+// The customer can read the porter's profile while they share a job, and
+// their location while the job is accepted or picked up (RLS).
+
+export type PorterSummary = Pick<
+  Profile,
+  "id" | "first_name" | "last_name" | "phone" | "avatar_url" | "vehicle_make" | "vehicle_model" | "vehicle_color" | "license_plate"
+>;
+
+export async function getPorterProfile(porterId: string): Promise<PorterSummary | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, phone, avatar_url, vehicle_make, vehicle_model, vehicle_color, license_plate")
+    .eq("id", porterId)
+    .maybeSingle();
+  return data;
+}
+
+export async function getPorterLocation(porterId: string): Promise<PorterLocation | null> {
+  const { data } = await supabase.from("porter_locations").select("*").eq("porter_id", porterId).maybeSingle();
+  return data;
+}
+
+export function subscribeToPorterLocation(porterId: string, onUpdate: (row: PorterLocation) => void) {
+  const channel = supabase
+    .channel(`porter-location:${porterId}:${Date.now()}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "porter_locations", filter: `porter_id=eq.${porterId}` },
+      (payload) => {
+        if (payload.new && "latitude" in payload.new) onUpdate(payload.new as PorterLocation);
+      },
+    )
+    .subscribe();
+  return { unsubscribe: () => supabase.removeChannel(channel) };
+}
+
+/** A short-lived link to the porter's proof-of-delivery photo. */
+export async function getProofPhotoUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage.from("proof-of-delivery").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }

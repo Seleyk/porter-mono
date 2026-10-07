@@ -414,12 +414,32 @@ enabled = true
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
-# Edge functions, matching what is deployed on the hosted project.
-# create-payment-intent is deployed WITHOUT JWT verification (and does no auth
-# check of its own). Kept as-is so `supabase functions deploy` doesn't change
-# behaviour silently; fixing it is tracked in supabase/README.md.
-[functions.create-payment-intent]
-verify_jwt = false
-
+# Edge functions. Every function checks the caller's Supabase session.
 [functions.create-porter-box-order]
 verify_jwt = true
+
+[functions.quote-delivery]
+verify_jwt = true
+
+[functions.create-booking]
+verify_jwt = true
+
+[functions.confirm-booking]
+verify_jwt = true
+
+[functions.cancel-booking]
+verify_jwt = true
+
+[functions.complete-job]
+verify_jwt = true
+
+[functions.add-tip]
+verify_jwt = true
+
+[functions.porter-payouts]
+verify_jwt = true
+
+# Stripe redirects the porter's browser here after payout sign-up; it only
+# sends them back to the driver app, so it can't require a session.
+[functions.stripe-return]
+verify_jwt = false

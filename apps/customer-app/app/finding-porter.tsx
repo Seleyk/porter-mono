@@ -1,32 +1,30 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, Animated, Pressable } from "react-native";
+import { StyleSheet, Text, View, Animated, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
-import { createBooking } from "@/services/booking";
-import { closestAvailableDriver, DEMO_USER_COORDS } from "@porter/shared";
+import { cancelBooking } from "@/services/booking";
+import { useLiveBooking } from "@/hooks/useLiveBooking";
 
 const STEPS = [
-  "Verifying porter credentials…",
-  "Calculating optimal route…",
-  "Confirming availability…",
-  "Porter confirmed.",
+  "Sending your request to porters nearby…",
+  "Waiting for a porter to accept…",
+  "Porters are reviewing your request…",
 ];
 
 export default function FindingPorterScreen() {
   const insets = useSafeAreaInsets();
   const { colors, bgGradient } = useColors();
-  const { user } = useAuth();
   const store = useBookingStore();
   const pulse = useRef(new Animated.Value(1)).current;
   const [progress, setProgress] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
-  const bookingCreated = useRef(false);
+  const [cancelling, setCancelling] = useState(false);
+  const { booking, porter } = useLiveBooking(store.bookingId);
 
   useEffect(() => {
     Animated.loop(
@@ -37,50 +35,65 @@ export default function FindingPorterScreen() {
     ).start();
   }, [pulse]);
 
+  // Indeterminate progress: sweeps until a porter accepts.
   useEffect(() => {
-    const t = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) { clearInterval(t); return 100; }
-        return Math.min(100, p + 1.4);
-      });
-    }, 50);
+    const t = setInterval(() => setProgress((p) => (p >= 100 ? 0 : p + 1)), 50);
     return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
-    const idx = Math.min(STEPS.length - 1, Math.floor(progress / 25));
-    setStepIdx(idx);
-  }, [progress]);
+    const t = setInterval(() => setStepIdx((i) => (i + 1) % STEPS.length), 3500);
+    return () => clearInterval(t);
+  }, []);
 
+  // The booking was created and paid for on the previous screen. A Porter
+  // Box drop-off gets its locker code here.
   useEffect(() => {
-    if (progress >= 100 && !bookingCreated.current && user && store.itemType) {
-      bookingCreated.current = true;
-      const driverRef = store.pickupCoords ?? DEMO_USER_COORDS;
-      const driver = closestAvailableDriver(driverRef);
-      store.setAssignedDriver(driver.name, driver.initials, driver.rating);
-      if (store.dropoffMethod === "box") {
-        store.setPorterBoxCode(String(Math.floor(1000 + Math.random() * 9000)));
-      }
-      createBooking({
-        customerId: user.id,
-        pickup: store.pickup,
-        dropoff: store.dropoff,
-        pickupCoords: store.pickupCoords,
-        dropoffCoords: store.dropoffCoords,
-        itemType: store.itemType,
-        itemCounts: store.itemCounts,
-        specialRequests: store.specialRequests,
-        dropoffMethod: store.dropoffMethod,
-        selectedBoxName: store.selectedBoxName,
-        deliverySpeed: store.deliverySpeed,
-        fareUSD: store.calculatedFare ?? 0,
-      })
-        .then((booking) => store.setBookingId(booking.id))
-        .catch(console.error);
-      const t = setTimeout(() => router.replace("/tracking"), 600);
-      return () => clearTimeout(t);
+    if (store.dropoffMethod === "box") {
+      store.setPorterBoxCode(String(Math.floor(1000 + Math.random() * 9000)));
     }
-  }, [progress]);
+  }, []);
+
+  // A porter accepted: show them and move to live tracking.
+  useEffect(() => {
+    if (!booking) return;
+    if (booking.status === "cancelled") {
+      store.reset();
+      router.replace("/(tabs)");
+      return;
+    }
+    if (booking.porter_id && porter && (booking.status === "accepted" || booking.status === "picked_up")) {
+      const initials = `${porter.first_name[0] ?? ""}${porter.last_name[0] ?? ""}`.toUpperCase();
+      store.setAssignedDriver(`${porter.first_name} ${porter.last_name[0] ?? ""}.`.trim(), initials, 0);
+      router.replace("/tracking");
+    }
+  }, [booking?.status, booking?.porter_id, porter?.id]);
+
+  const handleCancel = () => {
+    if (!store.bookingId) {
+      router.back();
+      return;
+    }
+    Alert.alert("Cancel this booking?", "We'll stop looking for a porter and release the hold on your card.", [
+      { text: "Keep looking", style: "cancel" },
+      {
+        text: "Cancel booking",
+        style: "destructive",
+        onPress: async () => {
+          setCancelling(true);
+          try {
+            await cancelBooking(store.bookingId!);
+            store.reset();
+            router.replace("/(tabs)");
+          } catch (e: any) {
+            Alert.alert("Couldn't cancel", e.message ?? "Please try again.");
+          } finally {
+            setCancelling(false);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <LinearGradient colors={[...bgGradient]} style={{ flex: 1 }}>
@@ -88,8 +101,8 @@ export default function FindingPorterScreen() {
         {/* Cancel */}
         <View style={styles.topBar}>
           <View style={{ flex: 1 }} />
-          <Pressable onPress={() => router.back()}>
-            <Text style={[styles.cancel, { color: colors.textMuted }]}>Cancel</Text>
+          <Pressable onPress={handleCancel} disabled={cancelling}>
+            <Text style={[styles.cancel, { color: colors.textMuted }]}>{cancelling ? "Cancelling…" : "Cancel"}</Text>
           </Pressable>
         </View>
 

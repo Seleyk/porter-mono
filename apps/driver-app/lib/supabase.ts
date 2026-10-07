@@ -1,0 +1,18 @@
+import * as SecureStore from "expo-secure-store";
+import { createPorterClient } from "@porter/shared";
+
+// Adapter so Supabase sessions persist securely on device
+const SecureStoreAdapter = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_KEY");
+}
+
+export const supabase = createPorterClient(supabaseUrl, supabaseKey, SecureStoreAdapter);

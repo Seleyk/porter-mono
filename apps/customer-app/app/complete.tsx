@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, View, Pressable, ScrollView, Alert } from "react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { router } from "expo-router";
 import { useBookingStore } from "@/store/bookingStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,10 +9,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
-import { addTip, getBooking } from "@/services/booking";
+import { confirmTip, getBooking, startTip } from "@/services/booking";
 import { supabase } from "@/lib/supabase";
-
-const SERVICE_FEE = 3.5;
 
 const TIPS = [
   { label: "$3", value: 3 },
@@ -22,22 +21,56 @@ const TIPS = [
 
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, bgGradient } = useColors();
+  const { colors, bgGradient, isDark } = useColors();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { deliverySpeed, bookingId, reset, calculatedFare } = useBookingStore();
   const { user, profile } = useAuth();
   const speedLabel = deliverySpeed === "priority" ? "Priority Delivery" : deliverySpeed === "standard" ? "Standard Delivery" : "Scheduled Delivery";
-  const speedPrice = calculatedFare ?? (deliverySpeed === "priority" ? 28 : deliverySpeed === "standard" ? 18 : 16);
   const [rating, setRating] = useState(0);
   const [tip, setTip] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [paidPrice, setPaidPrice] = useState<number | null>(null);
 
-  const total = speedPrice + SERVICE_FEE + (tip ?? 0);
+  // What the card was actually charged for the delivery.
+  useEffect(() => {
+    if (bookingId) getBooking(bookingId).then((b) => b?.base_price != null && setPaidPrice(Number(b.base_price)));
+  }, [bookingId]);
+
+  const speedPrice = paidPrice ?? calculatedFare ?? 0;
+  const total = speedPrice + (tip ?? 0);
+
+  // Charges the tip as its own card payment. Returns false if it wasn't paid.
+  async function payTip(id: string, amount: number): Promise<boolean> {
+    try {
+      const clientSecret = await startTip(id, amount);
+      const init = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: "Porter",
+        returnURL: "porter://stripe-redirect",
+        style: isDark ? "alwaysDark" : "alwaysLight",
+      });
+      if (init.error) throw new Error(init.error.message);
+      const { error } = await presentPaymentSheet();
+      if (error) {
+        if (error.code !== "Canceled") Alert.alert("Tip payment failed", error.message);
+        return false;
+      }
+      await confirmTip(id);
+      return true;
+    } catch (e: any) {
+      Alert.alert("Couldn't add your tip", e.message ?? "Please try again.");
+      return false;
+    }
+  }
   const firstName = profile?.first_name ?? "there";
 
   const handleDone = async () => {
     setSaving(true);
     if (bookingId) {
-      if (tip && tip > 0) await addTip(bookingId, tip).catch(console.error);
+      if (tip && tip > 0 && !(await payTip(bookingId, tip))) {
+        setSaving(false); // stay so they can try again or remove the tip
+        return;
+      }
       if (rating > 0 && user) {
         const booking = await getBooking(bookingId);
         if (booking?.porter_id) {
@@ -115,10 +148,6 @@ export default function CompleteScreen() {
               <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>{speedLabel}</Text>
               <Text style={[styles.receiptValue, { color: colors.textMuted }]}>${speedPrice.toFixed(2)}</Text>
             </View>
-            <View style={styles.receiptRow}>
-              <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>Service fee</Text>
-              <Text style={[styles.receiptValue, { color: colors.textMuted }]}>${SERVICE_FEE.toFixed(2)}</Text>
-            </View>
             {tip !== null && (
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptLabel, { color: colors.textMuted }]}>Gratuity</Text>
@@ -138,7 +167,7 @@ export default function CompleteScreen() {
           onPress={handleDone}
           disabled={saving}
         >
-          <Text style={styles.ctaText}>{saving ? "Saving…" : "Done"}</Text>
+          <Text style={styles.ctaText}>{saving ? "Saving…" : tip ? `Tip $${tip} and finish` : "Done"}</Text>
         </Pressable>
       </View>
     </LinearGradient>
