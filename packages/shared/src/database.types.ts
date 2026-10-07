@@ -355,7 +355,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }
@@ -382,7 +384,9 @@ export type Database = {
           service_type: string
           special_instructions?: string | null
           status?: string | null
+          stripe_payment_intent_id?: string | null
           tip_amount?: number | null
+          tip_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
         }
@@ -409,7 +413,9 @@ export type Database = {
           service_type?: string
           special_instructions?: string | null
           status?: string | null
+          stripe_payment_intent_id?: string | null
           tip_amount?: number | null
+          tip_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
         }
@@ -460,7 +466,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }
@@ -496,7 +504,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }
@@ -532,7 +542,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }
@@ -568,7 +580,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }
@@ -606,7 +620,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }[]
@@ -642,7 +658,9 @@ export type Database = {
           service_type: string
           special_instructions: string | null
           status: string | null
+          stripe_payment_intent_id: string | null
           tip_amount: number | null
+          tip_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
         }

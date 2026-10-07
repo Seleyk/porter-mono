@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase";
-import type { ServiceRequest } from "@porter/shared";
+import { callFunction, type ServiceRequest } from "@porter/shared";
 
 // Every change to a job goes through the database functions in
-// supabase/migrations/20261004180200_job_functions.sql. The app never
-// updates service_requests directly.
+// supabase/migrations/20261004180200_job_functions.sql (completion goes
+// through the complete-job edge function, which also takes payment). The app
+// never updates service_requests directly.
 
 export const ACTIVE_STATUSES = ["accepted", "picked_up"] as const;
 
@@ -63,14 +64,13 @@ export async function markPickedUp(id: string): Promise<ServiceRequest> {
   return data;
 }
 
+/**
+ * Completes the job with its proof photo. The edge function also charges the
+ * customer's card hold (supabase/functions/complete-job).
+ */
 export async function markDelivered(id: string, photoPath: string): Promise<ServiceRequest> {
-  const { data, error } = await supabase.rpc("advance_request", {
-    request_id: id,
-    to_status: "completed",
-    photo_path: photoPath,
-  });
-  if (error) throw error;
-  return data;
+  const { job } = await callFunction<{ job: ServiceRequest }>(supabase, "complete-job", { jobId: id, photoPath });
+  return job;
 }
 
 /** Uploads a proof-of-delivery photo to `<job id>/<timestamp>.jpg` and returns its path. */

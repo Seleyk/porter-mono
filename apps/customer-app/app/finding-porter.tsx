@@ -6,9 +6,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Fonts, Radius } from "@/constants/theme";
 import { useColors } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
 import { useBookingStore } from "@/store/bookingStore";
-import { cancelBooking, createBooking } from "@/services/booking";
+import { cancelBooking } from "@/services/booking";
 import { useLiveBooking } from "@/hooks/useLiveBooking";
 
 const STEPS = [
@@ -20,13 +19,11 @@ const STEPS = [
 export default function FindingPorterScreen() {
   const insets = useSafeAreaInsets();
   const { colors, bgGradient } = useColors();
-  const { user } = useAuth();
   const store = useBookingStore();
   const pulse = useRef(new Animated.Value(1)).current;
   const [progress, setProgress] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   const [cancelling, setCancelling] = useState(false);
-  const bookingCreated = useRef(false);
   const { booking, porter } = useLiveBooking(store.bookingId);
 
   useEffect(() => {
@@ -49,33 +46,13 @@ export default function FindingPorterScreen() {
     return () => clearInterval(t);
   }, []);
 
-  // Place the booking once. It goes to the job board for nearby porters.
+  // The booking was created and paid for on the previous screen. A Porter
+  // Box drop-off gets its locker code here.
   useEffect(() => {
-    if (bookingCreated.current || store.bookingId || !user || !store.itemType) return;
-    bookingCreated.current = true;
     if (store.dropoffMethod === "box") {
       store.setPorterBoxCode(String(Math.floor(1000 + Math.random() * 9000)));
     }
-    createBooking({
-      customerId: user.id,
-      pickup: store.pickup,
-      dropoff: store.dropoff,
-      pickupCoords: store.pickupCoords,
-      dropoffCoords: store.dropoffCoords,
-      itemType: store.itemType,
-      itemCounts: store.itemCounts,
-      specialRequests: store.specialRequests,
-      dropoffMethod: store.dropoffMethod,
-      selectedBoxName: store.selectedBoxName,
-      deliverySpeed: store.deliverySpeed,
-      fareUSD: store.calculatedFare ?? 0,
-    })
-      .then((b) => store.setBookingId(b.id))
-      .catch((e) => {
-        Alert.alert("Couldn't place your booking", e.message ?? "Please try again.");
-        router.back();
-      });
-  }, [user]);
+  }, []);
 
   // A porter accepted: show them and move to live tracking.
   useEffect(() => {
@@ -97,7 +74,7 @@ export default function FindingPorterScreen() {
       router.back();
       return;
     }
-    Alert.alert("Cancel this booking?", "We'll stop looking for a porter.", [
+    Alert.alert("Cancel this booking?", "We'll stop looking for a porter and release the hold on your card.", [
       { text: "Keep looking", style: "cancel" },
       {
         text: "Cancel booking",
